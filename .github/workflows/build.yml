@@ -1,0 +1,131 @@
+# Release loop (gitops docs/WEBSITE.md): build changed services on arm64,
+# push git-SHA-tagged images to ECR via OIDC (no stored keys), then open an
+# image-tag bump PR against mezmo-demos/gitops. Merge = release, revert = rollback.
+#
+# Required repo configuration:
+#   secrets.ECR_PUSH_ROLE_ARN  — OIDC push role (terramate-ruleprod ecr stack)
+#   secrets.GITOPS_TOKEN       — token able to branch + open PRs on mezmo-demos/gitops
+#   vars.ECR_REGISTRY          — <account>.dkr.ecr.<region>.amazonaws.com
+#   vars.AWS_REGION            — defaults to us-east-1 when unset
+name: build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      services:
+        description: Space-separated service names, or "all"
+        default: all
+
+concurrency:
+  group: build-${{ github.ref }}
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  changes:
+    runs-on: ubuntu-24.04
+    outputs:
+      services: ${{ steps.list.outputs.services }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            shared:
+              - 'packages/**'
+              - 'package-lock.json'
+              - 'tsconfig.base.json'
+            frontend:
+              - 'services/frontend/**'
+            catalog:
+              - 'services/catalog/**'
+            cart:
+              - 'services/cart/**'
+            checkout:
+              - 'services/checkout/**'
+            orders:
+              - 'services/orders/**'
+      - name: Resolve service list
+        id: list
+        env:
+          EVENT: ${{ github.event_name }}
+          REQUESTED: ${{ inputs.services }}
+          SHARED_CHANGED: ${{ steps.filter.outputs.shared }}
+        run: |
+          all=(frontend catalog cart checkout orders)
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            if [ "$REQUESTED" = "all" ]; then svcs=("${all[@]}"); else read -ra svcs <<< "$REQUESTED"; fi
+          elif [ "$SHARED_CHANGED" = "true" ]; then
+            svcs=("${all[@]}")
+          else
+            svcs=()
+            [ "${{ steps.filter.outputs.frontend }}" = "true" ] && svcs+=(frontend)
+            [ "${{ steps.filter.outputs.catalog }}" = "true" ] && svcs+=(catalog)
+            [ "${{ steps.filter.outputs.cart }}" = "true" ] && svcs+=(cart)
+            [ "${{ steps.filter.outputs.checkout }}" = "true" ] && svcs+=(checkout)
+            [ "${{ steps.filter.outputs.orders }}" = "true" ] && svcs+=(orders)
+          fi
+          echo "services=$(jq -nc '$ARGS.positional' --args "${svcs[@]}")" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: changes
+    if: needs.changes.outputs.services != '[]'
+    # Native arm64 (Graviton nodes); fall back to buildx + QEMU if the org
+    # plan loses arm runners.
+    runs-on: ubuntu-24.04-arm
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJSON(needs.changes.outputs.services) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.ECR_PUSH_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+      - uses: aws-actions/amazon-ecr-login@v2
+        id: ecr
+      - name: Build and push
+        env:
+          IMAGE: ${{ steps.ecr.outputs.registry }}/ruleprod/${{ matrix.service }}:${{ github.sha }}
+        run: |
+          docker build -f "services/${{ matrix.service }}/Dockerfile" -t "$IMAGE" .
+          docker push "$IMAGE"
+
+  release:
+    needs: [changes, build]
+    if: needs.changes.outputs.services != '[]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: mezmo-demos/gitops
+          token: ${{ secrets.GITOPS_TOKEN }}
+          path: gitops
+      - name: Bump image tags
+        env:
+          SERVICES: ${{ needs.changes.outputs.services }}
+          REGISTRY: ${{ vars.ECR_REGISTRY }}
+        run: |
+          for svc in $(jq -r '.[]' <<< "$SERVICES"); do
+            yq -i ".spec.template.spec.containers[0].image = \"${REGISTRY}/ruleprod/${svc}:${GITHUB_SHA}\"" \
+              "gitops/workloads/services/${svc}/deployment.yaml"
+          done
+      - name: Open bump PR
+        uses: peter-evans/create-pull-request@v7
+        with:
+          path: gitops
+          token: ${{ secrets.GITOPS_TOKEN }}
+          branch: release/${{ github.sha }}
+          commit-message: |
+            chore: bump ${{ join(fromJSON(needs.changes.outputs.services), ', ') }} to ${{ github.sha }}
+          title: 'release: ${{ join(fromJSON(needs.changes.outputs.services), ', ') }} @ ${{ github.sha }}'
+          body: |
+            ## Summary
+            - Image tag bump from [mezmo-demos/ruleprod@${{ github.sha }}](https://github.com/mezmo-demos/ruleprod/commit/${{ github.sha }})
+            - Services: ${{ join(fromJSON(needs.changes.outputs.services), ', ') }}
