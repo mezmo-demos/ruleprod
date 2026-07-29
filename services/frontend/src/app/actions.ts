@@ -17,7 +17,7 @@ export async function createAccountAction(personaId: string) {
     const newKey = `persona:${personaId}`;
 
     // Update cart
-    await fetch(`${CART_URL}/api/carts/${oldKey}/rekey`, {
+    await fetch(`${CART_URL}/api/carts/${encodeURIComponent(oldKey)}/rekey`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ toKey: newKey })
