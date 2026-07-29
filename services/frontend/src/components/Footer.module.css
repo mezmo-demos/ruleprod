@@ -1,0 +1,72 @@
+.footer {
+  background-color: var(--ink);
+  color: var(--surface);
+  padding: 52px 44px;
+}
+
+.container {
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 52px;
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.wordmark {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  color: var(--surface);
+}
+
+.description {
+  font-size: 15px;
+  color: var(--muted-light);
+  line-height: 1.5;
+}
+
+.links {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.links h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--surface);
+  margin-bottom: 4px;
+}
+
+.links a {
+  font-size: 14px;
+  color: var(--muted-light);
+}
+
+.links a:hover {
+  color: var(--surface);
+}
+
+.bottomBar {
+  padding-top: 24px;
+  border-top: 1px solid #262a31;
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--muted-light);
+}
+
+.legalLinks {
+  display: flex;
+  gap: 16px;
+}
