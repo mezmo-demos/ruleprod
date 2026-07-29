@@ -1,0 +1,159 @@
+.main {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+.header {
+  width: 100%;
+}
+
+.promoBar {
+  background-color: var(--ink);
+  color: white;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 12px;
+  text-align: center;
+}
+
+.nav {
+  padding: 20px 44px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.navContainer {
+  display: flex;
+  align-items: center;
+  gap: 38px;
+}
+
+.wordmark {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  color: var(--ink);
+}
+
+.navLinks {
+  display: flex;
+  gap: 26px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink-secondary);
+}
+
+.navActions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.search input {
+  width: 250px;
+  background-color: var(--surface-muted);
+  border: none;
+  border-radius: var(--radius-full);
+  padding: 11px 18px;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.search input::placeholder {
+  color: var(--muted-light);
+}
+
+.btnOutline {
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-full);
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.btnDark {
+  background-color: var(--ink);
+  color: white;
+  border-radius: var(--radius-full);
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.hero {
+  padding: 32px 44px;
+}
+
+.heroInner {
+  background-color: var(--surface-muted);
+  border-radius: var(--radius-hero);
+  min-height: 560px;
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  overflow: hidden;
+}
+
+.heroText {
+  padding: 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  justify-content: center;
+}
+
+.badge {
+  background-color: var(--surface);
+  color: var(--accent);
+  border-radius: var(--radius-full);
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  width: fit-content;
+}
+
+.heroButtons {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.btnAccent {
+  background-color: var(--accent);
+  color: white;
+  border-radius: var(--radius-full);
+  padding: 16px 32px;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.btnWhite {
+  background-color: var(--surface);
+  color: var(--ink);
+  border-radius: var(--radius-full);
+  padding: 16px 32px;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.trustRow {
+  margin-top: 26px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.heroImage {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 44px;
+}
+
+.imagePlaceholder {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  color: var(--muted-light);
+  text-transform: uppercase;
+}
