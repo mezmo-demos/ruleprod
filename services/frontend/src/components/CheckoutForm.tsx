@@ -4,7 +4,7 @@ import { useState } from 'react';
 import type { CheckoutQuote, PlaceOrderRequest, DeliveryMethod, PaymentMethod } from '@ruleprod/contracts';
 import { formatCents, resolveImage } from '@/lib/utils';
 import { placeOrderAction } from '@/app/actions';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import styles from '@/app/checkout/page.module.css';
@@ -15,20 +15,41 @@ interface Props {
 
 export default function CheckoutForm({ initialQuote }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isSubmitting, setIsAdding] = useState(false);
   const [delivery, setDelivery] = useState<DeliveryMethod>('standard');
   const [payment, setPayment] = useState<PaymentMethod>('invoice_net30');
 
+  // Local state for contact and shipping
+  const [email, setEmail] = useState('j.miller@example.com');
+  const [firstName, setFirstName] = useState('Jonathan');
+  const [lastName, setLastName] = useState('Miller');
+  const [streetAddress, setStreetAddress] = useState('1204 Fabrication Way, Suite B');
+  const [promoCode, setPromoCode] = useState(searchParams?.get('promoCode') || '');
+
+  const handleApplyPromo = () => {
+    const params = new URLSearchParams(searchParams?.toString() || '');
+    if (promoCode) {
+      params.set('promoCode', promoCode);
+    } else {
+      params.delete('promoCode');
+    }
+    router.replace(`?${params.toString()}`);
+  };
+
+  const isFormValid = email.trim() !== '' && firstName.trim() !== '' && lastName.trim() !== '' && streetAddress.trim() !== '';
+
   const handlePlaceOrder = async () => {
+    if (!isFormValid) return;
+
     setIsAdding(true);
     
-    // In a real app, these values would come from form state
     const request: Omit<PlaceOrderRequest, 'cartKey'> = {
       idempotencyKey: crypto.randomUUID(),
-      contact: { email: 'j.miller@example.com' },
+      contact: { email },
       shippingAddress: {
-        name: 'Jonathan Miller',
-        street1: '1204 Fabrication Way, Suite B',
+        name: `${firstName} ${lastName}`.trim(),
+        street1: streetAddress,
         city: 'Detroit',
         state: 'MI',
         zip: '48201',
@@ -63,7 +84,12 @@ export default function CheckoutForm({ initialQuote }: Props) {
           <div className={styles.cardBody}>
             <div className={styles.fieldGroup}>
               <label className={styles.label}>Email</label>
-              <input type="email" className={styles.inputField} defaultValue="j.miller@example.com" disabled />
+              <input 
+                type="email" 
+                className={styles.inputField} 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
             </div>
           </div>
         </div>
@@ -78,15 +104,30 @@ export default function CheckoutForm({ initialQuote }: Props) {
             <div className={styles.grid2Col}>
               <div className={styles.fieldGroup}>
                 <label className={styles.label}>First name</label>
-                <input type="text" className={styles.inputField} defaultValue="Jonathan" disabled />
+                <input 
+                  type="text" 
+                  className={styles.inputField} 
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                />
               </div>
               <div className={styles.fieldGroup}>
                 <label className={styles.label}>Last name</label>
-                <input type="text" className={styles.inputField} defaultValue="Miller" disabled />
+                <input 
+                  type="text" 
+                  className={styles.inputField} 
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                />
               </div>
               <div className={styles.fieldGroupSpan2}>
                 <label className={styles.label}>Street address</label>
-                <input type="text" className={styles.inputField} defaultValue="1204 Fabrication Way, Suite B" disabled />
+                <input 
+                  type="text" 
+                  className={styles.inputField} 
+                  value={streetAddress}
+                  onChange={(e) => setStreetAddress(e.target.value)}
+                />
               </div>
             </div>
           </div>
@@ -171,6 +212,31 @@ export default function CheckoutForm({ initialQuote }: Props) {
 
           <div className={styles.summaryDivider} />
 
+          <div className={styles.promoForm}>
+            <div className={styles.promoInputRow}>
+              <input 
+                type="text" 
+                className={styles.promoInput} 
+                placeholder="Promo code" 
+                value={promoCode}
+                onChange={(e) => setPromoCode(e.target.value)}
+              />
+              <button className={styles.promoBtn} onClick={handleApplyPromo}>Apply</button>
+            </div>
+            {initialQuote.promo && (
+              <div className={styles.promoSuccess}>
+                Code {initialQuote.promo.code} applied!
+              </div>
+            )}
+            {initialQuote.promoError && (
+              <div style={{ color: '#e53935', fontSize: '13px', fontWeight: 500 }}>
+                {initialQuote.promoError.message}
+              </div>
+            )}
+          </div>
+
+          <div className={styles.summaryDivider} />
+
           <div className={styles.summaryTotals}>
             <div className={styles.summaryTotalRow}>
               <span className={styles.summaryLabel}>Subtotal</span>
@@ -180,6 +246,12 @@ export default function CheckoutForm({ initialQuote }: Props) {
               <div className={styles.summaryTotalRowAccent}>
                 <span className={styles.summaryLabel}>Bulk savings</span>
                 <span className={styles.summaryValue}>−{formatCents(initialQuote.bulkSavingsCents)}</span>
+              </div>
+            )}
+            {initialQuote.promo && (
+              <div className={styles.summaryTotalRowAccent}>
+                <span className={styles.summaryLabel}>Promo savings</span>
+                <span className={styles.summaryValue}>−{formatCents(initialQuote.promo.discountCents)}</span>
               </div>
             )}
             <div className={styles.summaryTotalRow}>
@@ -195,7 +267,7 @@ export default function CheckoutForm({ initialQuote }: Props) {
             <span className={styles.finalTotalValue}>{formatCents(initialQuote.totalCents)}</span>
           </div>
 
-          <button className={styles.placeOrderBtn} onClick={handlePlaceOrder} disabled={isSubmitting}>
+          <button className={styles.placeOrderBtn} onClick={handlePlaceOrder} disabled={!isFormValid || isSubmitting}>
             {isSubmitting ? 'Placing order...' : 'Place order'}
           </button>
           
