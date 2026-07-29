@@ -25,7 +25,8 @@ WORKDIR /app
 COPY --from=build /app/services/frontend/.next/standalone ./
 # Copy the static assets
 COPY --from=build /app/services/frontend/.next/static ./services/frontend/.next/static
-# Note: Next.js standalone mode will also look for public directory if we had one.
+# Copy the public directory
+COPY --from=build /app/services/frontend/public ./services/frontend/public
 
 EXPOSE 3000
 
