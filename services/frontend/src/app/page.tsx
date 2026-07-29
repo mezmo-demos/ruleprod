@@ -107,7 +107,7 @@ export default async function Home() {
           <h2 className={styles.bulkBandTitle}>Buy ten, pay less. Automatically.</h2>
           <p className={styles.bulkBandBody}>Our price-break ladder applies in the cart. No account required.</p>
         </div>
-        <button className={styles.btnDarkPill}>See how it works</button>
+        <Link href="/catalog" className={styles.btnDarkPill} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>See how it works</Link>
       </div>
 
       <section className={styles.section}>
