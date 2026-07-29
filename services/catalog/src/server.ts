@@ -28,7 +28,7 @@ export function buildServer({ pool, loggerInstance }: ServerDeps): FastifyInstan
     if (statusCode >= 400 && statusCode < 500) {
       // Fastify-generated client errors (bad JSON body, unsupported media type, ...).
       void reply.status(statusCode).send({
-        error: { code: 'invalid_request', message: error.message },
+        error: { code: 'invalid_request', message: (error as Error).message },
       });
       return;
     }
