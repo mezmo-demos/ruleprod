@@ -50,6 +50,7 @@ export async function addToCartAction(sku: string, qty: number) {
   try {
     await apiAddToCart(sku, qty);
     revalidatePath('/cart');
+    revalidatePath('/checkout');
     revalidatePath('/'); // Global header cart count
     return { success: true };
   } catch (error) {
@@ -61,6 +62,7 @@ export async function updateCartItemAction(lineId: string, qty: number) {
   try {
     await apiUpdateCartItem(lineId, qty);
     revalidatePath('/cart');
+    revalidatePath('/checkout');
     revalidatePath('/');
     return { success: true };
   } catch (error) {
@@ -72,6 +74,7 @@ export async function removeFromCartAction(lineId: string) {
   try {
     await apiRemoveFromCart(lineId);
     revalidatePath('/cart');
+    revalidatePath('/checkout');
     revalidatePath('/');
     return { success: true };
   } catch (error) {
@@ -83,6 +86,7 @@ export async function placeOrderAction(request: Omit<PlaceOrderRequest, 'cartKey
   try {
     const result = await apiPlaceOrder(request);
     revalidatePath('/cart');
+    revalidatePath('/checkout');
     revalidatePath('/');
     revalidatePath('/account');
     return { success: true, data: result };
