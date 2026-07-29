@@ -3,13 +3,19 @@ import { getUserKey } from './auth';
 
 const CHECKOUT_URL = process.env.CHECKOUT_URL || 'http://localhost:4103';
 
-export async function getCheckoutQuote(promoCode?: string): Promise<CheckoutQuote> {
+export async function getCheckoutQuote(promoCode?: string, delivery: 'standard' | 'expedited' = 'standard'): Promise<CheckoutQuote> {
   const key = await getUserKey();
+  console.log('getCheckoutQuote key:', key);
 
-  const searchParams = new URLSearchParams();
-  if (promoCode) searchParams.append('promoCode', promoCode);
+  const body: any = { cartKey: key, delivery };
+  if (promoCode) body.promoCode = promoCode;
   
-  const res = await fetch(`${CHECKOUT_URL}/api/checkout/quote?cartKey=${key}${promoCode ? `&promoCode=${promoCode}` : ''}`, {
+  const res = await fetch(`${CHECKOUT_URL}/api/checkout/quote`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
     cache: 'no-store',
   });
 
@@ -29,7 +35,7 @@ export async function placeOrder(request: Omit<PlaceOrderRequest, 'cartKey'>): P
     userKey: key,
   };
 
-  const res = await fetch(`${CHECKOUT_URL}/api/checkout/order`, {
+  const res = await fetch(`${CHECKOUT_URL}/api/checkout/place-order`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
