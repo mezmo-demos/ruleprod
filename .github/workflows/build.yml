@@ -102,10 +102,18 @@ jobs:
     if: needs.changes.outputs.services != '[]'
     runs-on: ubuntu-24.04
     steps:
+      - name: Generate token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GITOPS_APP_ID }}
+          private-key: ${{ secrets.GITOPS_APP_PRIVATE_KEY }}
+          owner: mezmo-demos
+          repositories: gitops
       - uses: actions/checkout@v4
         with:
           repository: mezmo-demos/gitops
-          token: ${{ secrets.GITOPS_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
           path: gitops
       - name: Bump image tags
         env:
@@ -120,7 +128,7 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           path: gitops
-          token: ${{ secrets.GITOPS_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
           branch: release/${{ github.sha }}
           commit-message: |
             chore: bump ${{ join(fromJSON(needs.changes.outputs.services), ', ') }} to ${{ github.sha }}
