@@ -124,7 +124,7 @@ jobs:
           branch: release/${{ github.sha }}
           commit-message: |
             chore: bump ${{ join(fromJSON(needs.changes.outputs.services), ', ') }} to ${{ github.sha }}
-          title: 'release: ${{ join(fromJSON(needs.changes.outputs.services), ', ') }} @ ${{ github.sha }}'
+          title: "release: ${{ join(fromJSON(needs.changes.outputs.services), ', ') }} @ ${{ github.sha }}"
           body: |
             ## Summary
             - Image tag bump from [mezmo-demos/ruleprod@${{ github.sha }}](https://github.com/mezmo-demos/ruleprod/commit/${{ github.sha }})

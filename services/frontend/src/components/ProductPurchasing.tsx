@@ -15,6 +15,7 @@ export default function ProductPurchasing({ product }: Props) {
   const [selectedSku, setSelectedSku] = useState(product.defaultSku);
   const [qty, setQty] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
+  const [didAdd, setDidAdd] = useState(false);
 
   const selectedVariant = product.variants.find(v => v.sku === selectedSku) || product.variants[0]!;
   
@@ -38,7 +39,8 @@ export default function ProductPurchasing({ product }: Props) {
     const result = await addToCartAction(selectedSku, qty);
     setIsAdding(false);
     if (result.success) {
-      alert('Added to cart!');
+      setDidAdd(true);
+      setTimeout(() => setDidAdd(false), 2000);
     } else {
       alert(`Error: ${result.error}`);
     }
@@ -114,8 +116,8 @@ export default function ProductPurchasing({ product }: Props) {
           <span className={styles.stepperValue}>{qty}</span>
           <button className={styles.stepperBtn} onClick={() => setQty(qty + 1)}><Plus size={14} strokeWidth={2} /></button>
         </div>
-        <button className={styles.ctaBtn} onClick={handleAddToCart} disabled={isAdding}>
-          {isAdding ? 'Adding...' : `Add to cart · ${formatCents(lineTotal)}`}
+        <button className={styles.ctaBtn} onClick={handleAddToCart} disabled={isAdding || didAdd}>
+          {isAdding ? 'Adding...' : didAdd ? '✓ Added to cart!' : `Add to cart · ${formatCents(lineTotal)}`}
         </button>
       </div>
       
