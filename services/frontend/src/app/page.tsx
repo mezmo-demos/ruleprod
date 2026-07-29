@@ -39,17 +39,42 @@ export default async function Home() {
 
       <section className={styles.section}>
         <div className={styles.categoryGrid}>
-          {categories.map(cat => (
-            <Link key={cat.slug} href={`/catalog?category=${cat.slug}`} className={styles.categoryCard}>
-              <div className={styles.categoryImage}>
-                <Image src={resolveImage(cat.image)} alt={cat.name} fill style={{ objectFit: 'cover' }} />
-              </div>
-              <div className={styles.categoryBody}>
-                <h3 className="card-title">{cat.name}</h3>
-                <p className={styles.categorySubtitle}>{cat.subtitle}</p>
-              </div>
-            </Link>
-          ))}
+          <Link href="/catalog?category=trades" className={styles.categoryCard}>
+            <div className={styles.categoryImage}>
+              <Image src="/images/img-2.jpg" alt="For the trades" fill style={{ objectFit: 'cover' }} />
+            </div>
+            <div className={styles.categoryBody}>
+              <h3 className="card-title">For the trades</h3>
+              <p className={styles.categorySubtitle}>Framing squares, folding rules, tapes</p>
+            </div>
+          </Link>
+          <Link href="/catalog?category=studio" className={styles.categoryCard}>
+            <div className={styles.categoryImage}>
+              <Image src="/images/img-3.jpg" alt="For the studio" fill style={{ objectFit: 'cover' }} />
+            </div>
+            <div className={styles.categoryBody}>
+              <h3 className="card-title">For the studio</h3>
+              <p className={styles.categorySubtitle}>Scales, triangles, cutting rules</p>
+            </div>
+          </Link>
+          <Link href="/catalog?category=classroom" className={styles.categoryCard}>
+            <div className={styles.categoryImage}>
+              <Image src="/images/img-4.jpg" alt="For the classroom" fill style={{ objectFit: 'cover' }} />
+            </div>
+            <div className={styles.categoryBody}>
+              <h3 className="card-title">For the classroom</h3>
+              <p className={styles.categorySubtitle}>Bulk packs, shatterproof, metric</p>
+            </div>
+          </Link>
+          <Link href="/catalog?category=vintage" className={styles.categoryCard}>
+            <div className={styles.categoryImage}>
+              <Image src="/images/img-5.jpg" alt="The vintage archive" fill style={{ objectFit: 'cover' }} />
+            </div>
+            <div className={styles.categoryBody}>
+              <h3 className="card-title">The vintage archive</h3>
+              <p className={styles.categorySubtitle}>Slide rules, boxwood, brass</p>
+            </div>
+          </Link>
         </div>
       </section>
 
