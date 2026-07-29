@@ -31,7 +31,7 @@ export default async function Home() {
               </div>
             </div>
             <div className={styles.heroImage}>
-              <Image src="/images/img-11.jpg" alt="Rulers fanned across a pale backdrop" fill style={{ objectFit: 'cover' }} />
+              <Image src="/images/img-1.jpg" alt="Rulers fanned across a pale backdrop" fill style={{ objectFit: 'cover' }} />
             </div>
           </div>
         </div>
