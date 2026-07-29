@@ -1,8 +1,20 @@
 import Link from "next/link";
 import Image from "next/image";
 import styles from "./page.module.css";
+import { getOrders } from "@/lib/orders";
+import { formatCents, resolveImage } from "@/lib/utils";
 
-export default function AccountPage() {
+export default async function AccountPage() {
+  let orderData;
+  try {
+    orderData = await getOrders();
+  } catch (e) {
+    console.error(e);
+  }
+
+  const orders = orderData?.orders || [];
+  const stats = orderData?.stats || { orderCount: 0, lifetimeCents: 0 };
+
   return (
     <main className={styles.main}>
       <div className={styles.layout}>
@@ -24,7 +36,7 @@ export default function AccountPage() {
           <div className={styles.header}>
             <div className={styles.headerTitles}>
               <h1 className="page-h1">Orders</h1>
-              <span className={styles.headerMeta}>12 orders · $4,208.40 lifetime</span>
+              <span className={styles.headerMeta}>{stats.orderCount} orders · {formatCents(stats.lifetimeCents)} lifetime</span>
             </div>
             <div className={styles.headerActions}>
               <button className={styles.outlinePill}>All time ▾</button>
@@ -33,74 +45,32 @@ export default function AccountPage() {
           </div>
 
           <div className={styles.orderList}>
-            {/* Delivered Order */}
-            <div className={styles.orderCard}>
-              <div className={styles.orderRow}>
-                <div className={styles.orderThumb}>
-                   <Image src="/images/img-9.jpg" alt="Thumb" fill style={{ objectFit: 'cover' }} />
-                </div>
-                <div className={styles.orderDetails}>
-                  <div className={styles.orderTitleRow}>
-                    <h3 className={styles.orderNumber}>RP-10515</h3>
-                    <span className={styles.badgeSuccess}>Delivered</span>
+            {orders.map((order) => (
+              <div key={order.id} className={styles.orderCard}>
+                <div className={styles.orderRow}>
+                  <div className={styles.orderThumb}>
+                    <Image src={resolveImage(order.thumbs[0])} alt="Thumb" fill style={{ objectFit: 'cover' }} />
                   </div>
-                  <p className={styles.orderSummary}>3 items · Jul 12, 2026</p>
-                </div>
-                <div className={styles.orderTotal}>
-                  $348.50
-                </div>
-                <div className={styles.orderActions}>
-                  <button className={styles.outlinePillSmall}>Buy again</button>
-                  <button className={styles.outlinePillSmall}>Return</button>
+                  <div className={styles.orderDetails}>
+                    <div className={styles.orderTitleRow}>
+                      <h3 className={styles.orderNumber}>{order.orderNumber}</h3>
+                      <span className={order.status === 'delivered' ? styles.badgeSuccess : styles.badgeAccentSoft}>
+                        {order.status.replace('_', ' ')}
+                      </span>
+                    </div>
+                    <p className={styles.orderSummary}>{order.summaryLine} · {new Date(order.placedAt).toLocaleDateString()}</p>
+                  </div>
+                  <div className={styles.orderTotal}>
+                    {formatCents(order.totalCents)}
+                  </div>
+                  <div className={styles.orderActions}>
+                    <Link href={`/account/orders/${order.id}`} className={styles.outlinePillSmall}>View</Link>
+                    <button className={styles.outlinePillSmall}>Invoice</button>
+                  </div>
                 </div>
               </div>
-            </div>
-
-            {/* Processing Order */}
-            <div className={styles.orderCard}>
-              <div className={styles.orderRow}>
-                <div className={styles.orderThumb}>
-                   <Image src="/images/img-10.jpg" alt="Thumb" fill style={{ objectFit: 'cover' }} />
-                </div>
-                <div className={styles.orderDetails}>
-                  <div className={styles.orderTitleRow}>
-                    <h3 className={styles.orderNumber}>RP-10516</h3>
-                    <span className={styles.badgeAccentSoft}>Processing</span>
-                  </div>
-                  <p className={styles.orderSummary}>1 item · Jul 28, 2026</p>
-                </div>
-                <div className={styles.orderTotal}>
-                  $145.00
-                </div>
-                <div className={styles.orderActions}>
-                  <button className={styles.outlinePillSmall}>View</button>
-                  <button className={styles.outlinePillSmall}>Invoice</button>
-                </div>
-              </div>
-            </div>
-
-            {/* In Transit Order */}
-            <div className={styles.orderCard}>
-              <div className={styles.orderRow}>
-                <div className={styles.orderThumb}>
-                   <Image src="/images/img-11.jpg" alt="Thumb" fill style={{ objectFit: 'cover' }} />
-                </div>
-                <div className={styles.orderDetails}>
-                  <div className={styles.orderTitleRow}>
-                    <h3 className={styles.orderNumber}>RP-10514</h3>
-                    <span className={styles.badgeAccentSoft}>In transit</span>
-                  </div>
-                  <p className={styles.orderSummary}>12 items · Jul 26, 2026</p>
-                </div>
-                <div className={styles.orderTotal}>
-                  $824.20
-                </div>
-                <div className={styles.orderActions}>
-                  <button className={styles.outlinePillSmall}>Track</button>
-                  <button className={styles.outlinePillSmall}>Invoice</button>
-                </div>
-              </div>
-            </div>
+            ))}
+            {orders.length === 0 && <p className={styles.headerMeta}>No orders yet.</p>}
           </div>
 
           <div className={styles.savedCartsSection}>
@@ -113,11 +83,6 @@ export default function AccountPage() {
               <div className={styles.savedCartCard}>
                 <h3 className={styles.savedCartTitle}>Workshop restock</h3>
                 <p className={styles.savedCartMeta}>7 items · $412.00 · 14 Jul</p>
-                <button className={styles.restoreBtn}>Restore</button>
-              </div>
-              <div className={styles.savedCartCard}>
-                <h3 className={styles.savedCartTitle}>Drafting class kits</h3>
-                <p className={styles.savedCartMeta}>32 items · $854.40 · 02 Jun</p>
                 <button className={styles.restoreBtn}>Restore</button>
               </div>
             </div>

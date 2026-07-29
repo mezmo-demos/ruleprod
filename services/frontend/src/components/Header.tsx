@@ -1,7 +1,18 @@
 import Link from "next/link";
 import styles from "./Header.module.css";
+import { getCart } from "@/lib/cart";
 
-export default function Header() {
+export default async function Header() {
+  let cart;
+  try {
+    cart = await getCart();
+  } catch (e) {
+    // Ignore error for now, cart will just show 0 or not show
+    console.error('Header cart fetch failed:', e);
+  }
+
+  const lineCount = cart?.lines.length || 0;
+
   return (
     <header className={styles.header}>
       <div className={styles.promoBar}>
@@ -23,7 +34,7 @@ export default function Header() {
               <input type="text" placeholder="Search 1,240 rulers" />
             </div>
             <Link href="/account" className={styles.btnOutline}>Sign in</Link>
-            <Link href="/cart" className={styles.btnDark}>Cart · 2</Link>
+            <Link href="/cart" className={styles.btnDark}>Cart · {lineCount}</Link>
           </div>
         </div>
       </nav>

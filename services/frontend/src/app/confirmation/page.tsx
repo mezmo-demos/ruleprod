@@ -1,16 +1,48 @@
 import Link from "next/link";
 import Image from "next/image";
 import styles from "./page.module.css";
+import { getOrder } from "@/lib/orders";
+import { formatCents, resolveImage } from "@/lib/utils";
+import { notFound } from "next/navigation";
 
-export default function ConfirmationPage() {
+export default async function ConfirmationPage({ searchParams }: { searchParams: Promise<{ orderId?: string }> }) {
+  const { orderId } = await searchParams;
+
+  if (!orderId) {
+    // Fallback to static if no orderId, or show "Latest Order"
+    // For this demo, let's just show a generic success if no ID
+    return (
+      <main className={styles.main}>
+        <div className={styles.header}>
+          <div className={styles.successCircle}>✓</div>
+          <h1 className={styles.pageH1}>Your order is placed</h1>
+          <p className={styles.lede}>
+            We&apos;ve received your order and are processing it now.
+          </p>
+        </div>
+        <div className={styles.actions}>
+           <Link href="/catalog" className={styles.outlinePill}>Continue shopping</Link>
+        </div>
+      </main>
+    );
+  }
+
+  let order;
+  try {
+    order = await getOrder(orderId);
+  } catch (e) {
+    console.error(e);
+    notFound();
+  }
+
   return (
     <main className={styles.main}>
       
       <div className={styles.header}>
         <div className={styles.successCircle}>✓</div>
-        <h1 className={styles.pageH1}>Order RP-10517 is placed</h1>
+        <h1 className={styles.pageH1}>Order {order.orderNumber} is placed</h1>
         <p className={styles.lede}>
-          We've sent a confirmation email to <strong>j.miller@example.com</strong>. Since this is a net-30 account order, no payment was taken today.
+          We&apos;ve sent a confirmation email to <strong>{order.contact.email}</strong>. Since this is a net-30 account order, no payment was taken today.
         </p>
       </div>
 
@@ -18,35 +50,35 @@ export default function ConfirmationPage() {
         <div className={styles.receiptHeader}>
           <div className={styles.receiptCol}>
             <span className={styles.receiptLabel}>Order</span>
-            <span className={styles.receiptValue}>RP-10517</span>
+            <span className={styles.receiptValue}>{order.orderNumber}</span>
           </div>
           <div className={styles.receiptCol}>
             <span className={styles.receiptLabel}>Placed</span>
-            <span className={styles.receiptValue}>Jul 29, 2026</span>
+            <span className={styles.receiptValue}>{new Date(order.placedAt).toLocaleDateString()}</span>
           </div>
           <div className={styles.receiptCol}>
             <span className={styles.receiptLabel}>Arrives</span>
-            <span className={styles.receiptValue}>Jul 31, 2026</span>
+            <span className={styles.receiptValue}>{new Date(order.arrivesEstimate).toLocaleDateString()}</span>
           </div>
           <div className={styles.receiptCol}>
             <span className={styles.receiptLabel}>Total</span>
-            <span className={styles.receiptValue}>$318.24</span>
+            <span className={styles.receiptValue}>{formatCents(order.totalCents)}</span>
           </div>
         </div>
 
         <div className={styles.receiptBody}>
-          {[...Array(3)].map((_, i) => (
+          {order.lines.map((line, i) => (
             <div key={i} className={styles.receiptItem}>
               <div className={styles.itemThumb}>
-                <Image src="/images/img-8.jpg" alt="Thumb" fill style={{ objectFit: 'cover' }} />
+                <Image src={resolveImage(line.image)} alt={line.title} fill style={{ objectFit: 'cover' }} />
               </div>
               <div className={styles.itemDetails}>
-                <h4 className={styles.itemTitle}>Starrett 6" Spring Tempered Steel Rule</h4>
-                <p className={styles.itemSpec}>4R Graduation · Steel</p>
+                <h4 className={styles.itemTitle}>{line.title}</h4>
+                <p className={styles.itemSpec}>{line.variantLabel}</p>
               </div>
               <div className={styles.itemPriceCol}>
-                <span className={styles.itemPrice}>$30.60</span>
-                <span className={styles.itemQty}>Qty: 12</span>
+                <span className={styles.itemPrice}>{formatCents(line.unitPriceCents)}</span>
+                <span className={styles.itemQty}>Qty: {line.qty}</span>
               </div>
             </div>
           ))}
@@ -55,9 +87,10 @@ export default function ConfirmationPage() {
         <div className={styles.receiptFooter}>
           <div className={styles.footerBlock}>
             <h4 className={styles.footerLabel}>Shipping to</h4>
-            <p className={styles.footerValue}>Jonathan Miller</p>
-            <p className={styles.footerValue}>1204 Fabrication Way, Suite B</p>
-            <p className={styles.footerValue}>Detroit, MI 48201</p>
+            <p className={styles.footerValue}>{order.shippingAddress.name}</p>
+            <p className={styles.footerValue}>{order.shippingAddress.street1}</p>
+            {order.shippingAddress.street2 && <p className={styles.footerValue}>{order.shippingAddress.street2}</p>}
+            <p className={styles.footerValue}>{order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.zip}</p>
           </div>
           <div className={styles.footerBlock}>
             <h4 className={styles.footerLabel}>Payment</h4>
@@ -76,7 +109,7 @@ export default function ConfirmationPage() {
       </div>
 
       <div className={styles.actions}>
-        <button className={styles.outlinePill}>Track this order</button>
+        <Link href="/account" className={styles.outlinePill}>Track this order</Link>
         <Link href="/catalog" className={styles.outlinePill}>Continue shopping</Link>
       </div>
 
