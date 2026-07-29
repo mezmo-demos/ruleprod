@@ -91,7 +91,7 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       SESSION_SECRET: dev-secret
     ports:
-      - '3000:3000'
+      - '3001:3000'
     depends_on:
       - catalog
       - cart
