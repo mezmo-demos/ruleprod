@@ -24,7 +24,7 @@ export default async function Home() {
               <p className="body-large">The world&apos;s finest collection of precision rules, from machinist steel to vintage boxwood.</p>
               <div className={styles.heroButtons}>
                 <Link href="/catalog" className={styles.btnAccent}>Shop all rulers</Link>
-                <button className={styles.btnWhite}>How bulk pricing works</button>
+                <Link href="#bulk-pricing" className={styles.btnWhite} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>How bulk pricing works</Link>
               </div>
               <div className={styles.trustRow}>
                 Free shipping over $75 · 60-day returns · Ships same day
@@ -101,7 +101,7 @@ export default async function Home() {
         </div>
       </section>
 
-      <div className={styles.bulkBand}>
+      <div id="bulk-pricing" className={styles.bulkBand}>
         <div className={styles.bulkBandLeft}>
           <span className={styles.bulkBandEyebrow}>Wholesale</span>
           <h2 className={styles.bulkBandTitle}>Buy ten, pay less. Automatically.</h2>
