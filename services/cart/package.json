@@ -1,0 +1,25 @@
+{
+  "name": "@ruleprod/cart",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "dev": "tsx watch src/index.ts"
+  },
+  "dependencies": {
+    "@ruleprod/contracts": "*",
+    "@ruleprod/telemetry": "*",
+    "fastify": "^5.4.0",
+    "pg": "^8.16.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.0",
+    "@types/pg": "^8.15.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.2.0"
+  }
+}
