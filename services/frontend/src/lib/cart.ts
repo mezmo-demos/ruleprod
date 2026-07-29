@@ -6,10 +6,7 @@ const CART_URL = process.env.CART_URL || 'http://localhost:4102';
 export async function getCart(): Promise<Cart> {
   const key = await getUserKey();
 
-  const res = await fetch(`${CART_URL}/api/cart`, {
-    headers: {
-      'x-session-id': key,
-    },
+  const res = await fetch(`${CART_URL}/api/carts/${key}`, {
     cache: 'no-store',
   });
 
@@ -23,11 +20,10 @@ export async function getCart(): Promise<Cart> {
 export async function addToCart(sku: string, qty: number): Promise<Cart> {
   const key = await getUserKey();
 
-  const res = await fetch(`${CART_URL}/api/cart/items`, {
+  const res = await fetch(`${CART_URL}/api/carts/${key}/lines`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-session-id': key,
     },
     body: JSON.stringify({ sku, qty }),
   });
@@ -43,11 +39,10 @@ export async function addToCart(sku: string, qty: number): Promise<Cart> {
 export async function updateCartItem(lineId: string, qty: number): Promise<Cart> {
   const key = await getUserKey();
 
-  const res = await fetch(`${CART_URL}/api/cart/items/${lineId}`, {
+  const res = await fetch(`${CART_URL}/api/carts/${key}/lines/${lineId}`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
-      'x-session-id': key,
     },
     body: JSON.stringify({ qty }),
   });
@@ -62,11 +57,8 @@ export async function updateCartItem(lineId: string, qty: number): Promise<Cart>
 export async function removeFromCart(lineId: string): Promise<Cart> {
   const key = await getUserKey();
 
-  const res = await fetch(`${CART_URL}/api/cart/items/${lineId}`, {
+  const res = await fetch(`${CART_URL}/api/carts/${key}/lines/${lineId}`, {
     method: 'DELETE',
-    headers: {
-      'x-session-id': key,
-    },
   });
 
   if (!res.ok) {
