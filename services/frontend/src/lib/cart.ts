@@ -1,22 +1,14 @@
 import type { Cart } from '@ruleprod/contracts';
-import { cookies } from 'next/headers';
+import { getUserKey } from './auth';
 
 const CART_URL = process.env.CART_URL || 'http://localhost:4102';
 
-async function getSessionId() {
-  const cookieStore = await cookies();
-  return cookieStore.get('sessionId')?.value;
-}
-
 export async function getCart(): Promise<Cart> {
-  const sessionId = await getSessionId();
-  if (!sessionId) {
-    throw new Error('No session ID found');
-  }
+  const key = await getUserKey();
 
   const res = await fetch(`${CART_URL}/api/cart`, {
     headers: {
-      'x-session-id': sessionId,
+      'x-session-id': key,
     },
     cache: 'no-store',
   });
@@ -29,16 +21,13 @@ export async function getCart(): Promise<Cart> {
 }
 
 export async function addToCart(sku: string, qty: number): Promise<Cart> {
-  const sessionId = await getSessionId();
-  if (!sessionId) {
-    throw new Error('No session ID found');
-  }
+  const key = await getUserKey();
 
   const res = await fetch(`${CART_URL}/api/cart/items`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-session-id': sessionId,
+      'x-session-id': key,
     },
     body: JSON.stringify({ sku, qty }),
   });
@@ -52,16 +41,13 @@ export async function addToCart(sku: string, qty: number): Promise<Cart> {
 }
 
 export async function updateCartItem(lineId: string, qty: number): Promise<Cart> {
-  const sessionId = await getSessionId();
-  if (!sessionId) {
-    throw new Error('No session ID found');
-  }
+  const key = await getUserKey();
 
   const res = await fetch(`${CART_URL}/api/cart/items/${lineId}`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
-      'x-session-id': sessionId,
+      'x-session-id': key,
     },
     body: JSON.stringify({ qty }),
   });
@@ -74,15 +60,12 @@ export async function updateCartItem(lineId: string, qty: number): Promise<Cart>
 }
 
 export async function removeFromCart(lineId: string): Promise<Cart> {
-  const sessionId = await getSessionId();
-  if (!sessionId) {
-    throw new Error('No session ID found');
-  }
+  const key = await getUserKey();
 
   const res = await fetch(`${CART_URL}/api/cart/items/${lineId}`, {
     method: 'DELETE',
     headers: {
-      'x-session-id': sessionId,
+      'x-session-id': key,
     },
   });
 

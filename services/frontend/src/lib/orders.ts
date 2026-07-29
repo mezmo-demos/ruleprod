@@ -1,20 +1,12 @@
 import type { Order, OrderListResponse } from '@ruleprod/contracts';
-import { cookies } from 'next/headers';
+import { getUserKey } from './auth';
 
 const ORDERS_URL = process.env.ORDERS_URL || 'http://localhost:4104';
 
-async function getSessionId() {
-  const cookieStore = await cookies();
-  return cookieStore.get('sessionId')?.value;
-}
-
 export async function getOrders(): Promise<OrderListResponse> {
-  const sessionId = await getSessionId();
-  if (!sessionId) {
-    throw new Error('No session ID found');
-  }
+  const key = await getUserKey();
 
-  const res = await fetch(`${ORDERS_URL}/api/orders?userKey=anon:${sessionId}`, {
+  const res = await fetch(`${ORDERS_URL}/api/orders?userKey=${key}`, {
     cache: 'no-store',
   });
 

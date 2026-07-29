@@ -452,3 +452,8 @@
   font-weight: 700;
   margin-top: 4px;
 }
+
+@media (max-width: 1023px) {
+  .productLayout { grid-template-columns: 1fr; }
+  .relatedGrid { grid-template-columns: repeat(2, 1fr); }
+}

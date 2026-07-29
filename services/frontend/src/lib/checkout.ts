@@ -1,23 +1,15 @@
 import type { CheckoutQuote, PlaceOrderRequest, PlaceOrderResponse } from '@ruleprod/contracts';
-import { cookies } from 'next/headers';
+import { getUserKey } from './auth';
 
 const CHECKOUT_URL = process.env.CHECKOUT_URL || 'http://localhost:4103';
 
-async function getSessionId() {
-  const cookieStore = await cookies();
-  return cookieStore.get('sessionId')?.value;
-}
-
 export async function getCheckoutQuote(promoCode?: string): Promise<CheckoutQuote> {
-  const sessionId = await getSessionId();
-  if (!sessionId) {
-    throw new Error('No session ID found');
-  }
+  const key = await getUserKey();
 
   const searchParams = new URLSearchParams();
   if (promoCode) searchParams.append('promoCode', promoCode);
   
-  const res = await fetch(`${CHECKOUT_URL}/api/checkout/quote?cartKey=anon:${sessionId}${promoCode ? `&promoCode=${promoCode}` : ''}`, {
+  const res = await fetch(`${CHECKOUT_URL}/api/checkout/quote?cartKey=${key}${promoCode ? `&promoCode=${promoCode}` : ''}`, {
     cache: 'no-store',
   });
 
@@ -29,14 +21,12 @@ export async function getCheckoutQuote(promoCode?: string): Promise<CheckoutQuot
 }
 
 export async function placeOrder(request: Omit<PlaceOrderRequest, 'cartKey'>): Promise<PlaceOrderResponse> {
-  const sessionId = await getSessionId();
-  if (!sessionId) {
-    throw new Error('No session ID found');
-  }
+  const key = await getUserKey();
 
   const fullRequest: PlaceOrderRequest = {
     ...request,
-    cartKey: `anon:${sessionId}`,
+    cartKey: key,
+    userKey: key,
   };
 
   const res = await fetch(`${CHECKOUT_URL}/api/checkout/order`, {

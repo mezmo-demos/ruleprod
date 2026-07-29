@@ -4,6 +4,7 @@ import styles from "./page.module.css";
 import { getOrder } from "@/lib/orders";
 import { formatCents, resolveImage } from "@/lib/utils";
 import { notFound } from "next/navigation";
+import CreateAccountButton from "@/components/CreateAccountButton";
 
 export default async function ConfirmationPage({ searchParams }: { searchParams: Promise<{ orderId?: string }> }) {
   const { orderId } = await searchParams;
@@ -105,7 +106,7 @@ export default async function ConfirmationPage({ searchParams }: { searchParams:
           <h3 className={styles.upsellTitle}>Keep this order in your history</h3>
           <p className={styles.upsellBody}>Create a free account to track this shipment, save carts, and speed through checkout next time.</p>
         </div>
-        <button className={styles.upsellBtn}>Create account</button>
+        <CreateAccountButton email={order.contact.email} />
       </div>
 
       <div className={styles.actions}>
