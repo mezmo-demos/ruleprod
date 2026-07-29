@@ -401,3 +401,9 @@
   color: var(--muted-light);
   line-height: 1.5;
 }
+
+@media (max-width: 1023px) {
+  .layout { grid-template-columns: 1fr; }
+  .summaryCol { position: static; }
+  .grid2Col { grid-template-columns: 1fr; }
+}

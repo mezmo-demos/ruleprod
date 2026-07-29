@@ -371,3 +371,16 @@
   color: var(--ink);
   margin-left: 16px;
 }
+
+@media (max-width: 1439px) {
+  .productGrid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 1023px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar { display: none; /* In a full implementation, this becomes a sheet */ }
+  .productGrid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 767px) {
+  .productGrid { grid-template-columns: 1fr; }
+  .titleRow { flex-direction: column; align-items: flex-start; gap: 16px; }
+}
