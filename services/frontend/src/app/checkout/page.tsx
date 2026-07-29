@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import styles from "./page.module.css";
 
 export default function CheckoutPage() {
@@ -131,7 +132,7 @@ export default function CheckoutPage() {
               {[...Array(3)].map((_, i) => (
                 <div key={i} className={styles.summaryLine}>
                   <div className={styles.summaryLineThumb}>
-                     <span className={styles.imagePlaceholder}>[Thumb]</span>
+                     <Image src="/images/img-7.jpg" alt="Thumb" fill style={{ objectFit: 'cover' }} />
                   </div>
                   <div className={styles.summaryLineDetails}>
                     <h4 className={styles.summaryLineTitle}>Starrett 6" Spring Tempered...</h4>

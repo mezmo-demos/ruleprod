@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import styles from "./page.module.css";
 
 export default function CartPage() {
@@ -15,7 +16,7 @@ export default function CartPage() {
           <div className={styles.lineItemsCard}>
             <div className={styles.lineItem}>
               <div className={styles.lineThumb}>
-                <span className={styles.imagePlaceholder}>[Thumb]</span>
+                <Image src="/images/img-3.jpg" alt="Thumb" fill style={{ objectFit: 'cover' }} />
               </div>
               <div className={styles.lineDetails}>
                 <h3 className={styles.lineTitle}>Starrett 6" Spring Tempered Steel Rule</h3>
@@ -35,7 +36,7 @@ export default function CartPage() {
 
             <div className={styles.lineItem}>
               <div className={styles.lineThumb}>
-                <span className={styles.imagePlaceholder}>[Thumb]</span>
+                <Image src="/images/img-4.jpg" alt="Thumb" fill style={{ objectFit: 'cover' }} />
               </div>
               <div className={styles.lineDetails}>
                 <h3 className={styles.lineTitle}>Alvin 12" Architect Scale</h3>
@@ -54,7 +55,7 @@ export default function CartPage() {
             
             <div className={styles.lineItem}>
               <div className={styles.lineThumb}>
-                <span className={styles.imagePlaceholder}>[Thumb]</span>
+                <Image src="/images/img-5.jpg" alt="Thumb" fill style={{ objectFit: 'cover' }} />
               </div>
               <div className={styles.lineDetails}>
                 <h3 className={styles.lineTitle}>Shinwa 150mm Rigid Rule</h3>
@@ -85,7 +86,7 @@ export default function CartPage() {
             <div className={styles.savedForLaterCard}>
               <div className={styles.savedLine}>
                 <div className={styles.savedThumb}>
-                  <span className={styles.imagePlaceholder}>[Thumb]</span>
+                  <Image src="/images/img-6.jpg" alt="Thumb" fill style={{ objectFit: 'cover' }} />
                 </div>
                 <div className={styles.savedDetails}>
                   <h3 className={styles.savedTitle}>Rabone 24" Folding Rule</h3>

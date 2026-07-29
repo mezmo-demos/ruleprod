@@ -65,12 +65,13 @@
   font-weight: 500;
   color: var(--muted);
 }
-
 .heroImage {
   display: flex;
   align-items: flex-end;
   justify-content: flex-end;
   padding: 44px;
+  position: relative;
+  overflow: hidden;
 }
 
 .imagePlaceholder {
@@ -119,13 +120,14 @@
 .categoryCard:hover {
   transform: translateY(-2px);
 }
-
 .categoryImage {
   aspect-ratio: 5 / 4;
   background-color: #e9ebf1;
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  overflow: hidden;
 }
 
 .categoryBody {
@@ -165,6 +167,8 @@
   align-items: center;
   justify-content: center;
   transition: transform 150ms ease-out;
+
+  overflow: hidden;
 }
 
 .productBadge {
@@ -263,12 +267,13 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
 }
-
 .editorialImage {
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 300px;
+  position: relative;
+  overflow: hidden;
 }
 
 .editorialText {
@@ -283,11 +288,12 @@
 .editorialSmall {
   background-color: var(--surface);
 }
-
 .editorialSmallImage {
   aspect-ratio: 16 / 9;
   background-color: #e9ebf1;
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  overflow: hidden;
 }

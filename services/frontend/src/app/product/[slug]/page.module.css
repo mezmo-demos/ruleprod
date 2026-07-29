@@ -18,7 +18,6 @@
   flex-direction: column;
   gap: 14px;
 }
-
 .primaryImage {
   aspect-ratio: 4 / 3;
   border-radius: 24px;
@@ -27,6 +26,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  overflow: hidden;
 }
 
 .thumbnailStrip {
@@ -45,6 +46,8 @@
   position: relative;
   border: none;
   cursor: pointer;
+
+  overflow: hidden;
 }
 
 .thumbnailActive {
@@ -421,7 +424,6 @@
   flex-direction: column;
   gap: 12px;
 }
-
 .relatedImage {
   aspect-ratio: 1 / 1;
   border-radius: var(--radius-card);
@@ -429,6 +431,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  overflow: hidden;
 }
 
 .imagePlaceholder {

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import styles from "./page.module.css";
 
 export default function Home() {
@@ -21,9 +22,7 @@ export default function Home() {
             </div>
             <div className={styles.heroImage}>
               {/* Image placeholder */}
-              <div className={styles.imagePlaceholder}>
-                [Rulers fanned across a pale backdrop]
-              </div>
+              <Image src="/images/img-11.jpg" alt="Rulers fanned across a pale backdrop" fill style={{ objectFit: 'cover' }} />
             </div>
           </div>
         </div>
@@ -34,7 +33,7 @@ export default function Home() {
           {/* Category Cards */}
           <Link href="/catalog?category=trades" className={styles.categoryCard}>
             <div className={styles.categoryImage}>
-              <span className={styles.imagePlaceholder}>[Trades group]</span>
+              <Image src="/images/img-1.jpg" alt="Trades group" fill style={{ objectFit: 'cover' }} />
             </div>
             <div className={styles.categoryBody}>
               <h3 className="card-title">Trades</h3>
@@ -43,7 +42,7 @@ export default function Home() {
           </Link>
           <Link href="/catalog?category=studio" className={styles.categoryCard}>
             <div className={styles.categoryImage}>
-              <span className={styles.imagePlaceholder}>[Studio group]</span>
+              <Image src="/images/img-2.jpg" alt="Studio group" fill style={{ objectFit: 'cover' }} />
             </div>
             <div className={styles.categoryBody}>
               <h3 className="card-title">Studio</h3>
@@ -52,7 +51,7 @@ export default function Home() {
           </Link>
           <Link href="/catalog?category=classroom" className={styles.categoryCard}>
             <div className={styles.categoryImage}>
-              <span className={styles.imagePlaceholder}>[Classroom group]</span>
+              <Image src="/images/img-3.jpg" alt="Classroom group" fill style={{ objectFit: 'cover' }} />
             </div>
             <div className={styles.categoryBody}>
               <h3 className="card-title">Classroom</h3>
@@ -61,7 +60,7 @@ export default function Home() {
           </Link>
           <Link href="/catalog?category=vintage" className={styles.categoryCard}>
             <div className={styles.categoryImage}>
-              <span className={styles.imagePlaceholder}>[Vintage archive group]</span>
+              <Image src="/images/img-4.jpg" alt="Vintage archive group" fill style={{ objectFit: 'cover' }} />
             </div>
             <div className={styles.categoryBody}>
               <h3 className="card-title">Vintage archive</h3>
@@ -81,7 +80,7 @@ export default function Home() {
           <Link href="/product/starrett-6r" className={styles.productCard}>
             <div className={styles.productImage}>
               <span className={styles.productBadge}>Best seller</span>
-              <span className={styles.imagePlaceholder}>[Starrett 6R cutout]</span>
+              <Image src="/images/img-5.jpg" alt="Starrett 6R cutout" fill style={{ objectFit: 'cover' }} />
             </div>
             <div>
               <h3 className={styles.productTitle}>Starrett 6" Spring Tempered</h3>
@@ -91,7 +90,7 @@ export default function Home() {
           </Link>
           <Link href="/product/alvin-architect" className={styles.productCard}>
             <div className={styles.productImage}>
-              <span className={styles.imagePlaceholder}>[Alvin scale cutout]</span>
+              <Image src="/images/img-6.jpg" alt="Alvin scale cutout" fill style={{ objectFit: 'cover' }} />
             </div>
             <div>
               <h3 className={styles.productTitle}>Alvin 12" Architect Scale</h3>
@@ -101,7 +100,7 @@ export default function Home() {
           </Link>
           <Link href="/product/shinwa-machinist" className={styles.productCard}>
             <div className={styles.productImage}>
-              <span className={styles.imagePlaceholder}>[Shinwa cutout]</span>
+              <Image src="/images/img-7.jpg" alt="Shinwa cutout" fill style={{ objectFit: 'cover' }} />
             </div>
             <div>
               <h3 className={styles.productTitle}>Shinwa 150mm Rigid Rule</h3>
@@ -112,7 +111,7 @@ export default function Home() {
           <Link href="/product/vintage-boxwood" className={styles.productCard}>
             <div className={styles.productImage}>
               <span className={`${styles.productBadge} ${styles.productBadgeAccent}`}>1 of 3 left</span>
-              <span className={styles.imagePlaceholder}>[Boxwood folder cutout]</span>
+              <Image src="/images/img-8.jpg" alt="Boxwood folder cutout" fill style={{ objectFit: 'cover' }} />
             </div>
             <div>
               <h3 className={styles.productTitle}>Rabone 24" Folding Rule</h3>
@@ -137,7 +136,7 @@ export default function Home() {
         <div className={styles.editorialGrid}>
           <div className={`${styles.editorialCard} ${styles.editorialLarge}`}>
             <div className={styles.editorialImage}>
-               <span className={styles.imagePlaceholder}>[Slide rule macro]</span>
+               <Image src="/images/img-9.jpg" alt="Slide rule macro" fill style={{ objectFit: 'cover' }} />
             </div>
             <div className={styles.editorialText}>
               <h3 className="card-title">The forgotten art of the slide rule</h3>
@@ -146,7 +145,7 @@ export default function Home() {
           </div>
           <div className={`${styles.editorialCard} ${styles.editorialSmall}`}>
             <div className={styles.editorialSmallImage}>
-               <span className={styles.imagePlaceholder}>[Workbench lifestyle]</span>
+               <Image src="/images/img-10.jpg" alt="Workbench lifestyle" fill style={{ objectFit: 'cover' }} />
             </div>
             <div className={styles.editorialText}>
               <h3 className="card-title">Equipping the modern shop</h3>

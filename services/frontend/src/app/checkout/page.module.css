@@ -248,7 +248,6 @@
   display: flex;
   align-items: center;
 }
-
 .summaryLineThumb {
   width: 52px;
   height: 52px;
@@ -259,6 +258,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  overflow: hidden;
 }
 
 .imagePlaceholder {

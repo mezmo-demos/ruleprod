@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import styles from "./page.module.css";
 
 export default function AccountPage() {
@@ -36,7 +37,7 @@ export default function AccountPage() {
             <div className={styles.orderCard}>
               <div className={styles.orderRow}>
                 <div className={styles.orderThumb}>
-                   <span className={styles.imagePlaceholder}>[Thumb]</span>
+                   <Image src="/images/img-9.jpg" alt="Thumb" fill style={{ objectFit: 'cover' }} />
                 </div>
                 <div className={styles.orderDetails}>
                   <div className={styles.orderTitleRow}>
@@ -59,7 +60,7 @@ export default function AccountPage() {
             <div className={styles.orderCard}>
               <div className={styles.orderRow}>
                 <div className={styles.orderThumb}>
-                   <span className={styles.imagePlaceholder}>[Thumb]</span>
+                   <Image src="/images/img-10.jpg" alt="Thumb" fill style={{ objectFit: 'cover' }} />
                 </div>
                 <div className={styles.orderDetails}>
                   <div className={styles.orderTitleRow}>
@@ -82,7 +83,7 @@ export default function AccountPage() {
             <div className={styles.orderCard}>
               <div className={styles.orderRow}>
                 <div className={styles.orderThumb}>
-                   <span className={styles.imagePlaceholder}>[Thumb]</span>
+                   <Image src="/images/img-11.jpg" alt="Thumb" fill style={{ objectFit: 'cover' }} />
                 </div>
                 <div className={styles.orderDetails}>
                   <div className={styles.orderTitleRow}>

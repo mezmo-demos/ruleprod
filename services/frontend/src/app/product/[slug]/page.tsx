@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import styles from "./page.module.css";
 
 export default function ProductPage({ params }: { params: { slug: string } }) {
@@ -8,23 +9,23 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
         {/* Left Column: Media & Details */}
         <div className={styles.leftCol}>
           <div className={styles.primaryImage}>
-            <span className={styles.imagePlaceholder}>[Hero product shot, soft daylight]</span>
+            <Image src="/images/img-13.jpg" alt="Hero product shot, soft daylight" fill style={{ objectFit: 'cover' }} />
           </div>
           <div className={styles.thumbnailStrip}>
             <button className={`${styles.thumbnail} ${styles.thumbnailActive}`}>
-              <span className={styles.imagePlaceholder}>[Thumb]</span>
+              <Image src="/images/img-14.jpg" alt="Thumb" fill style={{ objectFit: 'cover' }} />
             </button>
             <button className={styles.thumbnail}>
-              <span className={styles.imagePlaceholder}>[Angle]</span>
+              <Image src="/images/img-15.jpg" alt="Angle" fill style={{ objectFit: 'cover' }} />
             </button>
             <button className={styles.thumbnail}>
-              <span className={styles.imagePlaceholder}>[Macro]</span>
+              <Image src="/images/img-16.jpg" alt="Macro" fill style={{ objectFit: 'cover' }} />
             </button>
             <button className={styles.thumbnail}>
-              <span className={styles.imagePlaceholder}>[In-hand]</span>
+              <Image src="/images/img-17.jpg" alt="In-hand" fill style={{ objectFit: 'cover' }} />
             </button>
             <button className={styles.thumbnail}>
-              <span className={styles.imagePlaceholder}>[Package]</span>
+              <Image src="/images/img-1.jpg" alt="Package" fill style={{ objectFit: 'cover' }} />
             </button>
           </div>
           
@@ -168,7 +169,7 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
           {[...Array(4)].map((_, i) => (
             <Link key={i} href="#" className={styles.relatedCard}>
               <div className={styles.relatedImage}>
-                <span className={styles.imagePlaceholder}>[Accessory]</span>
+                <Image src="/images/img-2.jpg" alt="Accessory" fill style={{ objectFit: 'cover' }} />
               </div>
               <div className={styles.relatedInfo}>
                 <h3 className={styles.relatedTitle}>Starrett Center Gage</h3>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import styles from "./page.module.css";
 
 export default function ConfirmationPage() {
@@ -37,7 +38,7 @@ export default function ConfirmationPage() {
           {[...Array(3)].map((_, i) => (
             <div key={i} className={styles.receiptItem}>
               <div className={styles.itemThumb}>
-                <span className={styles.imagePlaceholder}>[Thumb]</span>
+                <Image src="/images/img-8.jpg" alt="Thumb" fill style={{ objectFit: 'cover' }} />
               </div>
               <div className={styles.itemDetails}>
                 <h4 className={styles.itemTitle}>Starrett 6" Spring Tempered Steel Rule</h4>

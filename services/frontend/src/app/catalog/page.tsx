@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import styles from "./page.module.css";
 
 export default function Catalog() {
@@ -115,7 +116,7 @@ export default function Catalog() {
                 <div className={styles.productImage}>
                   {i === 0 && <span className={styles.productBadge}>Best seller</span>}
                   {i === 3 && <span className={`${styles.productBadge} ${styles.productBadgeAccent}`}>1 of 3 left</span>}
-                  <span className={styles.imagePlaceholder}>[Product]</span>
+                  <Image src="/images/img-12.jpg" alt="Product" fill style={{ objectFit: 'cover' }} />
                 </div>
                 <div className={styles.productInfo}>
                   <h3 className={styles.productTitle}>Starrett 12" Steel Rule</h3>
