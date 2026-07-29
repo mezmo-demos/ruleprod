@@ -3,6 +3,7 @@ import Image from "next/image";
 import styles from "./page.module.css";
 import { getOrders } from "@/lib/orders";
 import { formatCents, resolveImage } from "@/lib/utils";
+import { ChevronDown } from "lucide-react";
 
 export default async function AccountPage() {
   let orderData;
@@ -39,7 +40,9 @@ export default async function AccountPage() {
               <span className={styles.headerMeta}>{stats.orderCount} orders · {formatCents(stats.lifetimeCents)} lifetime</span>
             </div>
             <div className={styles.headerActions}>
-              <button className={styles.outlinePill}>All time ▾</button>
+              <button className={styles.outlinePill} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                All time <ChevronDown size={14} strokeWidth={2} />
+              </button>
               <button className={styles.outlinePill}>Export CSV</button>
             </div>
           </div>

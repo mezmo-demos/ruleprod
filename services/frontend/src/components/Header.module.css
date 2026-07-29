@@ -47,12 +47,25 @@
   gap: 10px;
 }
 
+.search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 14px;
+  color: var(--muted);
+  pointer-events: none;
+}
+
 .search input {
   width: 250px;
   background-color: var(--surface-muted);
   border: none;
   border-radius: var(--radius-full);
-  padding: 11px 18px;
+  padding: 11px 18px 11px 38px;
   font-size: 14px;
   color: var(--ink);
 }

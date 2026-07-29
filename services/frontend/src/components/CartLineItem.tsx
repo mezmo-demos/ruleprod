@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { formatCents, resolveImage } from '@/lib/utils';
 import { updateCartItemAction, removeFromCartAction } from '@/app/actions';
 import styles from '@/app/cart/page.module.css';
+import { Minus, Plus } from 'lucide-react';
 
 interface Props {
   line: CartLine;
@@ -33,9 +34,9 @@ export default function CartLineItem({ line }: Props) {
         )}
       </div>
       <div className={styles.stepper}>
-        <button className={styles.stepperBtn} onClick={() => handleUpdateQty(line.qty - 1)}>−</button>
+        <button className={styles.stepperBtn} onClick={() => handleUpdateQty(line.qty - 1)}><Minus size={14} strokeWidth={2} /></button>
         <span className={styles.stepperValue}>{line.qty}</span>
-        <button className={styles.stepperBtn} onClick={() => handleUpdateQty(line.qty + 1)}>+</button>
+        <button className={styles.stepperBtn} onClick={() => handleUpdateQty(line.qty + 1)}><Plus size={14} strokeWidth={2} /></button>
       </div>
       <div className={styles.linePriceCol}>
         <span className={styles.lineTotal}>{formatCents(line.lineTotalCents)}</span>

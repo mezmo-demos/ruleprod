@@ -4,6 +4,7 @@ import { useState } from 'react';
 import type { Product, Variant } from '@ruleprod/contracts';
 import { formatCents } from '@/lib/utils';
 import { addToCartAction } from '@/app/actions';
+import { Minus, Plus } from 'lucide-react';
 import styles from './ProductPurchasing.module.css';
 
 interface Props {
@@ -109,9 +110,9 @@ export default function ProductPurchasing({ product }: Props) {
 
       <div className={styles.addToCartRow}>
         <div className={styles.stepper}>
-          <button className={styles.stepperBtn} onClick={() => setQty(Math.max(1, qty - 1))}>−</button>
+          <button className={styles.stepperBtn} onClick={() => setQty(Math.max(1, qty - 1))}><Minus size={14} strokeWidth={2} /></button>
           <span className={styles.stepperValue}>{qty}</span>
-          <button className={styles.stepperBtn} onClick={() => setQty(qty + 1)}>+</button>
+          <button className={styles.stepperBtn} onClick={() => setQty(qty + 1)}><Plus size={14} strokeWidth={2} /></button>
         </div>
         <button className={styles.ctaBtn} onClick={handleAddToCart} disabled={isAdding}>
           {isAdding ? 'Adding...' : `Add to cart · ${formatCents(lineTotal)}`}

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import styles from "./Header.module.css";
 import { getCart } from "@/lib/cart";
+import { Search, ShoppingCart } from "lucide-react";
 
 export default async function Header() {
   let cart;
@@ -31,10 +32,14 @@ export default async function Header() {
           </div>
           <div className={styles.navActions}>
             <div className={styles.search}>
+              <Search size={16} strokeWidth={1.5} className={styles.searchIcon} />
               <input type="text" placeholder="Search 1,240 rulers" />
             </div>
             <Link href="/account" className={styles.btnOutline}>Sign in</Link>
-            <Link href="/cart" className={styles.btnDark}>Cart · {lineCount}</Link>
+            <Link href="/cart" className={styles.btnDark}>
+              <ShoppingCart size={16} strokeWidth={1.5} style={{ marginRight: '6px' }} />
+              Cart · {lineCount}
+            </Link>
           </div>
         </div>
       </nav>
