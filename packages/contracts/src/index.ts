@@ -126,16 +126,34 @@ export interface BulkTier {
   unitPriceCents: number;
 }
 
+/**
+ * An active sale on a product. Sales are per-product, so every variant is
+ * discounted by the same percentage.
+ */
+export interface SaleInfo {
+  percentOff: number;
+  /** Pre-sale price of whatever `priceCents` sits beside — the struck-through "was". */
+  basePriceCents: number;
+}
+
 export interface ProductCard {
   slug: string;
   title: string;
   specLine: string;
   image: string;
+  /**
+   * What one unit costs today — already sale-adjusted. When `sale` is set this
+   * is below `sale.basePriceCents`; the two are equal only when nothing is on
+   * offer. Matches `baseUnitPriceCents` on a quoted line, so the browse price
+   * and the checkout price can never disagree.
+   */
   priceCents: number;
   badge?: Badge;
   stock: number;
   /** Lowest tier teaser; null renders as "no bulk". */
   bulk: BulkTier | null;
+  /** Null when no sale window is currently open. */
+  sale: SaleInfo | null;
 }
 
 export interface ProductSpecs {
@@ -157,7 +175,10 @@ export interface Review {
 export interface Variant {
   sku: string;
   label: string;
+  /** Sale-adjusted, like `ProductCard.priceCents`. */
   priceCents: number;
+  /** Pre-sale price; equal to `priceCents` when no sale is running. */
+  basePriceCents: number;
   stock: number;
   tiers: BulkTier[];
 }

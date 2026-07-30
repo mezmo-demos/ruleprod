@@ -13,15 +13,18 @@ import type {
 } from '@ruleprod/contracts';
 import { GRADUATIONS, LENGTHS, MATERIALS } from '@ruleprod/contracts';
 import { notFound } from '../errors.js';
+import { saleAdjustedUnitCents } from '../pricing.js';
 import {
-  FROM_CLAUSE,
+  ACTIVE_SALE_JOIN,
+  CARD_COLUMNS,
+  CARD_JOINS,
   buildCountQuery,
   buildFacetQueries,
   buildListQuery,
   parseListQuery,
 } from '../search.js';
 
-interface CardRow {
+export interface CardRow {
   slug: string;
   title: string;
   specLine: string;
@@ -31,20 +34,30 @@ interface CardRow {
   stock: number;
   bulkMinQty: number | null;
   bulkUnitPriceCents: number | null;
+  /** Largest currently-open sale percent for the product; null when none. */
+  salePercentOff: string | null;
 }
 
-function toCard(row: CardRow): ProductCard {
+export function toCard(row: CardRow): ProductCard {
+  // The discount is applied here rather than in SQL so browse pages round the
+  // same way price-quote does — a penny of drift between the two would show up
+  // as the price changing when a shopper adds to cart.
+  const percentOff = row.salePercentOff === null ? 0 : Number(row.salePercentOff);
+  const priceCents = saleAdjustedUnitCents(row.priceCents, percentOff);
+
   const card: ProductCard = {
     slug: row.slug,
     title: row.title,
     specLine: row.specLine,
     image: row.image,
-    priceCents: row.priceCents,
+    priceCents,
     stock: row.stock,
     bulk:
       row.bulkMinQty !== null && row.bulkUnitPriceCents !== null
         ? { minQty: row.bulkMinQty, unitPriceCents: row.bulkUnitPriceCents }
         : null,
+    sale:
+      percentOff > 0 ? { percentOff, basePriceCents: row.priceCents } : null,
   };
   if (row.badge !== null) card.badge = row.badge;
   return card;
@@ -60,23 +73,8 @@ function withVocabCounts(
 }
 
 const CARD_SELECT = `SELECT
-  p.slug,
-  p.title,
-  p.spec_line AS "specLine",
-  p.images[1] AS image,
-  p.badge,
-  dv.price_cents AS "priceCents",
-  dv.stock,
-  lt.min_qty AS "bulkMinQty",
-  lt.unit_price_cents AS "bulkUnitPriceCents"
-${FROM_CLAUSE}
-LEFT JOIN LATERAL (
-  SELECT t.min_qty, t.unit_price_cents
-  FROM catalog.bulk_tiers t
-  WHERE t.sku = dv.sku
-  ORDER BY t.min_qty ASC
-  LIMIT 1
-) lt ON true`;
+  ${CARD_COLUMNS}
+${CARD_JOINS}`;
 
 export function registerProductRoutes(app: FastifyInstance, pool: Pool): void {
   app.get('/api/products', async (request): Promise<ProductListResponse> => {
@@ -141,6 +139,7 @@ export function registerProductRoutes(app: FastifyInstance, pool: Pool): void {
       madeIn: string;
       ratingAverage: number;
       ratingCount: number;
+      salePercentOff: string | null;
     }
     interface VariantRow {
       sku: string;
@@ -151,10 +150,14 @@ export function registerProductRoutes(app: FastifyInstance, pool: Pool): void {
     }
 
     const productResult = await pool.query<ProductRow>(
-      `SELECT slug, category, title, spec_line AS "specLine", description, images, badge,
-              material, graduation, finish, thickness, tolerance, made_in AS "madeIn",
-              rating_average::float8 AS "ratingAverage", rating_count AS "ratingCount"
-       FROM catalog.products WHERE slug = $1`,
+      `SELECT p.slug, p.category, p.title, p.spec_line AS "specLine", p.description, p.images,
+              p.badge, p.material, p.graduation, p.finish, p.thickness, p.tolerance,
+              p.made_in AS "madeIn",
+              p.rating_average::float8 AS "ratingAverage", p.rating_count AS "ratingCount",
+              sale.percent_off AS "salePercentOff"
+       FROM catalog.products p
+       ${ACTIVE_SALE_JOIN}
+       WHERE p.slug = $1`,
       [slug],
     );
     const product = productResult.rows[0];
@@ -186,10 +189,15 @@ export function registerProductRoutes(app: FastifyInstance, pool: Pool): void {
       tiersBySku.set(tier.sku, list);
     }
 
+    // One sale covers the whole product, so every variant takes the same cut.
+    const percentOff =
+      product.salePercentOff === null ? 0 : Number(product.salePercentOff);
+
     const variants: Variant[] = variantResult.rows.map((row) => ({
       sku: row.sku,
       label: row.label,
-      priceCents: row.priceCents,
+      priceCents: saleAdjustedUnitCents(row.priceCents, percentOff),
+      basePriceCents: row.priceCents,
       stock: row.stock,
       tiers: tiersBySku.get(row.sku) ?? [],
     }));
@@ -204,9 +212,13 @@ export function registerProductRoutes(app: FastifyInstance, pool: Pool): void {
       title: product.title,
       specLine: product.specLine,
       image: primaryImage,
-      priceCents: defaultVariant.priceCents,
+      priceCents: saleAdjustedUnitCents(defaultVariant.priceCents, percentOff),
       stock: defaultVariant.stock,
       bulk: defaultTiers[0] ?? null,
+      sale:
+        percentOff > 0
+          ? { percentOff, basePriceCents: defaultVariant.priceCents }
+          : null,
       category: product.category,
       description: product.description,
       images: product.images,
