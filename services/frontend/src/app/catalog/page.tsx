@@ -6,6 +6,24 @@ import { resolveImage, formatCents } from "@/lib/utils";
 import FilterSidebar from "@/components/FilterSidebar";
 import { ChevronDown, ChevronRight, MoreHorizontal } from "lucide-react";
 
+/**
+ * A link to another page of the same result set: every active param survives,
+ * only `page` is replaced. Building these from scratch is what silently threw
+ * away the category and facet filters.
+ */
+function pageHref(params: Record<string, string | string[]>, page: number): string {
+  const next = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (key === 'page') continue;
+    for (const v of Array.isArray(value) ? value : [value]) {
+      if (v !== undefined && v !== '') next.append(key, v);
+    }
+  }
+  if (page > 1) next.set('page', String(page));
+  const query = next.toString();
+  return query ? `/catalog?${query}` : '/catalog';
+}
+
 // Next.js 15+ searchParams is a Promise
 export default async function Catalog({ searchParams }: { searchParams: Promise<Record<string, string | string[]>> }) {
   const params = await searchParams;
@@ -17,13 +35,19 @@ export default async function Catalog({ searchParams }: { searchParams: Promise<
   ]);
 
   const { products, facets, total, page, perPage } = data;
-  
+  const pageCount = Math.ceil(total / perPage);
+
   // Determine page title
   const categorySlug = params.category as string | undefined;
   const currentCategory = categorySlug 
     ? catData.categories.find(c => c.slug === categorySlug) 
     : null;
-  const pageTitle = currentCategory ? currentCategory.name : "All rulers";
+  const searchTerm = typeof params.q === 'string' ? params.q : undefined;
+  const pageTitle = searchTerm
+    ? `Results for “${searchTerm}”`
+    : currentCategory
+      ? currentCategory.name
+      : "All rulers";
 
   return (
     <main className={styles.main}>
@@ -53,6 +77,12 @@ export default async function Catalog({ searchParams }: { searchParams: Promise<
         </aside>
 
         <section className={styles.content}>
+          {products.length === 0 && (
+            <p className={styles.emptyState}>
+              Nothing matched{searchTerm ? ` “${searchTerm}”` : ' those filters'}.{' '}
+              <Link href="/catalog">Browse all rulers →</Link>
+            </p>
+          )}
           <div className={styles.productGrid}>
             {products.map((prod) => (
               <Link key={prod.slug} href={`/product/${prod.slug}`} className={styles.productCard}>
@@ -77,14 +107,15 @@ export default async function Catalog({ searchParams }: { searchParams: Promise<
             ))}
           </div>
 
-          <div className={styles.pagination}>
-            {/* Simple pagination display based on total/perPage */}
-            {Array.from({ length: Math.ceil(total / perPage) }).map((_, i) => (
-              <Link key={i} href={`/catalog?page=${i + 1}`} className={`${styles.pageCell} ${page === i + 1 ? styles.pageCellActive : ''}`}>
-                {i + 1}
-              </Link>
-            ))}
-          </div>
+          {pageCount > 1 && (
+            <div className={styles.pagination}>
+              {Array.from({ length: pageCount }).map((_, i) => (
+                <Link key={i} href={pageHref(params, i + 1)} className={`${styles.pageCell} ${page === i + 1 ? styles.pageCellActive : ''}`}>
+                  {i + 1}
+                </Link>
+              ))}
+            </div>
+          )}
         </section>
       </div>
     </main>
