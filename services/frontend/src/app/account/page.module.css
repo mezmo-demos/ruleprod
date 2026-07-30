@@ -281,10 +281,22 @@
   margin-bottom: 24px;
 }
 
+/* The global reset zeroes heading margins, so a section heading owns the gap
+   to whatever follows it. Two exceptions below: inside .savedCartsHeader the
+   flex wrapper already supplies that spacing, and a lede hugs its heading. */
 .sectionH2 {
+  margin-bottom: 24px;
   font-size: 26px;
   font-weight: 800;
   color: var(--ink);
+}
+
+.savedCartsHeader .sectionH2 {
+  margin-bottom: 0;
+}
+
+.sectionH2:has(+ .sectionLede) {
+  margin-bottom: 6px;
 }
 
 .newCartBtn {
@@ -405,10 +417,9 @@
 }
 
 .sectionLede {
-  /* The global reset zeroes heading margins, so this sits directly under
-     .sectionH2 and supplies its own gap — a negative margin here lands the
-     lede on top of the heading. */
-  margin: 6px 0 20px;
+  /* The gap above comes from .sectionH2:has(+ .sectionLede); a negative
+     margin here is what landed the lede on top of the heading. */
+  margin: 0 0 20px;
   font-size: 14px;
   color: var(--muted);
 }
