@@ -405,7 +405,10 @@
 }
 
 .sectionLede {
-  margin: -12px 0 20px;
+  /* The global reset zeroes heading margins, so this sits directly under
+     .sectionH2 and supplies its own gap — a negative margin here lands the
+     lede on top of the heading. */
+  margin: 6px 0 20px;
   font-size: 14px;
   color: var(--muted);
 }
