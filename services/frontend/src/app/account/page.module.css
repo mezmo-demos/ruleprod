@@ -11,6 +11,77 @@
   gap: 40px;
 }
 
+/* Who you're signed in as — the only identity the demo has. */
+.identity,
+.guestBanner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 32px;
+  padding: 20px 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background-color: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.guestBanner {
+  border-style: dashed;
+  border-color: var(--border-dashed);
+  background-color: var(--surface-sunken);
+  box-shadow: none;
+}
+
+.identityAvatar {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-full);
+  background-color: var(--accent-soft);
+  color: var(--accent);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.identityText {
+  min-width: 0;
+}
+
+.identityName {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.identityMeta {
+  margin-top: 3px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.identityActions {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.solidPill {
+  margin-left: auto;
+  flex: 0 0 auto;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-full);
+  padding: 10px 20px;
+  background-color: var(--ink);
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 /* Sidebar */
 .sidebarCol {
   position: relative;
@@ -73,12 +144,27 @@
 }
 
 .outlinePill {
+  display: inline-flex;
+  align-items: center;
   border: 1px solid var(--border-control);
   border-radius: var(--radius-full);
   padding: 10px 20px;
+  background-color: transparent;
+  font-family: inherit;
   font-size: 14px;
   font-weight: 600;
   color: var(--ink);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.outlinePill:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.outlinePill:disabled {
+  cursor: progress;
+  opacity: 0.6;
 }
 
 .orderList {

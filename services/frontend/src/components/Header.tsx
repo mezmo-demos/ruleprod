@@ -1,6 +1,7 @@
 import Link from "next/link";
 import styles from "./Header.module.css";
 import { getCart } from "@/lib/cart";
+import { getPersona } from "@/lib/auth";
 import { Search, ShoppingCart } from "lucide-react";
 
 export default async function Header() {
@@ -13,6 +14,7 @@ export default async function Header() {
   }
 
   const lineCount = cart?.lines.length || 0;
+  const persona = await getPersona();
 
   return (
     <header className={styles.header}>
@@ -37,7 +39,14 @@ export default async function Header() {
               <Search size={16} strokeWidth={1.5} className={styles.searchIcon} />
               <input type="search" name="q" placeholder="Search rulers" aria-label="Search rulers" />
             </form>
-            <Link href="/account" className={styles.btnOutline}>Sign in</Link>
+            {persona ? (
+              <Link href="/account" className={styles.accountChip} title={`Signed in as ${persona.name}`}>
+                <span className={styles.accountAvatar} aria-hidden="true">{persona.initials}</span>
+                <span className={styles.accountName}>{persona.name.split(' ')[0]}</span>
+              </Link>
+            ) : (
+              <Link href="/signin" className={styles.btnOutline}>Sign in</Link>
+            )}
             <Link href="/cart" className={styles.btnDark}>
               <ShoppingCart size={16} strokeWidth={1.5} style={{ marginRight: '6px' }} />
               Cart · {lineCount}

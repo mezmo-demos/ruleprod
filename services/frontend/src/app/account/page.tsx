@@ -2,10 +2,14 @@ import Link from "next/link";
 import Image from "next/image";
 import styles from "./page.module.css";
 import { getOrders } from "@/lib/orders";
+import { getPersona } from "@/lib/auth";
 import { formatCents, resolveImage } from "@/lib/utils";
+import SignOutButton from "@/components/SignOutButton";
 import { ChevronDown } from "lucide-react";
 
 export default async function AccountPage() {
+  const persona = await getPersona();
+
   let orderData;
   try {
     orderData = await getOrders();
@@ -18,8 +22,35 @@ export default async function AccountPage() {
 
   return (
     <main className={styles.main}>
+      {persona ? (
+        <div className={styles.identity}>
+          <span className={styles.identityAvatar} aria-hidden="true">{persona.initials}</span>
+          <div className={styles.identityText}>
+            <h2 className={styles.identityName}>{persona.name}</h2>
+            <p className={styles.identityMeta}>
+              {persona.role} · {persona.company} · {persona.email}
+            </p>
+          </div>
+          <div className={styles.identityActions}>
+            <Link href="/signin" className={styles.outlinePill}>Switch persona</Link>
+            <SignOutButton className={styles.outlinePill} />
+          </div>
+        </div>
+      ) : (
+        <div className={styles.guestBanner}>
+          <div className={styles.identityText}>
+            <h2 className={styles.identityName}>You&apos;re browsing as a guest</h2>
+            <p className={styles.identityMeta}>
+              Pick a persona to see a full order history — and to keep anything you
+              order today.
+            </p>
+          </div>
+          <Link href="/signin" className={styles.solidPill}>Pick a persona</Link>
+        </div>
+      )}
+
       <div className={styles.layout}>
-        
+
         {/* Sidebar */}
         <aside className={styles.sidebarCol}>
           <nav className={styles.sidebar}>

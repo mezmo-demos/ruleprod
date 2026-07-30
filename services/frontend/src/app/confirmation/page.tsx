@@ -4,7 +4,7 @@ import styles from "./page.module.css";
 import { getOrder } from "@/lib/orders";
 import { formatCents, resolveImage } from "@/lib/utils";
 import { notFound } from "next/navigation";
-import CreateAccountButton from "@/components/CreateAccountButton";
+import { getPersona } from "@/lib/auth";
 
 export default async function ConfirmationPage({ searchParams }: { searchParams: Promise<{ orderId?: string }> }) {
   const { orderId } = await searchParams;
@@ -35,6 +35,8 @@ export default async function ConfirmationPage({ searchParams }: { searchParams:
     console.error(e);
     notFound();
   }
+
+  const persona = await getPersona();
 
   return (
     <main className={styles.main}>
@@ -101,13 +103,15 @@ export default async function ConfirmationPage({ searchParams }: { searchParams:
         </div>
       </div>
 
-      <div className={styles.upsellBand}>
-        <div className={styles.upsellText}>
-          <h3 className={styles.upsellTitle}>Keep this order in your history</h3>
-          <p className={styles.upsellBody}>Create a free account to track this shipment, save carts, and speed through checkout next time.</p>
+      {!persona && (
+        <div className={styles.upsellBand}>
+          <div className={styles.upsellText}>
+            <h3 className={styles.upsellTitle}>Keep this order in your history</h3>
+            <p className={styles.upsellBody}>Pick a persona to track this shipment, save carts, and speed through checkout next time. This order comes with you.</p>
+          </div>
+          <Link href={`/signin?next=/account`} className={styles.upsellBtn}>Pick a persona</Link>
         </div>
-        <CreateAccountButton email={order.contact.email} />
-      </div>
+      )}
 
       <div className={styles.actions}>
         <Link href="/account" className={styles.outlinePill}>Track this order</Link>

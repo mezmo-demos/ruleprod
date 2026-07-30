@@ -9,11 +9,23 @@ import Image from 'next/image';
 import Link from 'next/link';
 import styles from '@/app/checkout/page.module.css';
 
-interface Props {
-  initialQuote: CheckoutQuote;
+/** Prefill for the shipping form — the signed-in persona's details, or blank. */
+export interface CheckoutDefaults {
+  email: string;
+  firstName: string;
+  lastName: string;
+  streetAddress: string;
+  city: string;
+  state: string;
+  zip: string;
 }
 
-export default function CheckoutForm({ initialQuote }: Props) {
+interface Props {
+  initialQuote: CheckoutQuote;
+  defaults: CheckoutDefaults;
+}
+
+export default function CheckoutForm({ initialQuote, defaults }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isSubmitting, setIsAdding] = useState(false);
@@ -21,13 +33,13 @@ export default function CheckoutForm({ initialQuote }: Props) {
   const [payment, setPayment] = useState<PaymentMethod>('invoice_net30');
 
   // Local state for contact and shipping
-  const [email, setEmail] = useState('j.miller@example.com');
-  const [firstName, setFirstName] = useState('Jonathan');
-  const [lastName, setLastName] = useState('Miller');
-  const [streetAddress, setStreetAddress] = useState('1204 Fabrication Way, Suite B');
-  const [city, setCity] = useState('Detroit');
-  const [state, setState] = useState('MI');
-  const [zip, setZip] = useState('48201');
+  const [email, setEmail] = useState(defaults.email);
+  const [firstName, setFirstName] = useState(defaults.firstName);
+  const [lastName, setLastName] = useState(defaults.lastName);
+  const [streetAddress, setStreetAddress] = useState(defaults.streetAddress);
+  const [city, setCity] = useState(defaults.city);
+  const [state, setState] = useState(defaults.state);
+  const [zip, setZip] = useState(defaults.zip);
   const [promoCode, setPromoCode] = useState(searchParams?.get('promoCode') || '');
   const [error, setError] = useState<string | null>(null);
 
@@ -85,14 +97,15 @@ export default function CheckoutForm({ initialQuote }: Props) {
             <h2 className={styles.cardTitle}>
               <span className={styles.stepNum}>1</span> Contact
             </h2>
-            <Link href="/account" className={styles.signInLink}>Have an account? Sign in</Link>
+            <Link href="/signin?next=/checkout" className={styles.signInLink}>Have an account? Sign in</Link>
           </div>
           <div className={styles.cardBody}>
             <div className={styles.fieldGroup}>
               <label className={styles.label}>Email</label>
               <input 
-                type="email" 
-                className={styles.inputField} 
+                type="email"
+                className={styles.inputField}
+                placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
@@ -111,8 +124,9 @@ export default function CheckoutForm({ initialQuote }: Props) {
               <div className={styles.fieldGroup}>
                 <label className={styles.label}>First name</label>
                 <input 
-                  type="text" 
-                  className={styles.inputField} 
+                  type="text"
+                  className={styles.inputField}
+                  placeholder="First name"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                 />
@@ -120,8 +134,9 @@ export default function CheckoutForm({ initialQuote }: Props) {
               <div className={styles.fieldGroup}>
                 <label className={styles.label}>Last name</label>
                 <input 
-                  type="text" 
-                  className={styles.inputField} 
+                  type="text"
+                  className={styles.inputField}
+                  placeholder="Last name"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                 />
@@ -131,6 +146,7 @@ export default function CheckoutForm({ initialQuote }: Props) {
                 <input
                   type="text"
                   className={styles.inputField}
+                  placeholder="Street and unit"
                   value={streetAddress}
                   onChange={(e) => setStreetAddress(e.target.value)}
                 />
@@ -140,6 +156,7 @@ export default function CheckoutForm({ initialQuote }: Props) {
                 <input
                   type="text"
                   className={styles.inputField}
+                  placeholder="City"
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
                 />
@@ -149,6 +166,8 @@ export default function CheckoutForm({ initialQuote }: Props) {
                 <input
                   type="text"
                   className={styles.inputField}
+                  placeholder="State"
+                  maxLength={2}
                   value={state}
                   onChange={(e) => setState(e.target.value)}
                 />
@@ -159,6 +178,7 @@ export default function CheckoutForm({ initialQuote }: Props) {
                   type="text"
                   inputMode="numeric"
                   className={styles.inputField}
+                  placeholder="ZIP"
                   value={zip}
                   onChange={(e) => setZip(e.target.value)}
                 />
