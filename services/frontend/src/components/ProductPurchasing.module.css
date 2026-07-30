@@ -241,6 +241,16 @@
   cursor: wait;
 }
 
+.errorNote {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-radius: var(--radius-field);
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
 .savingsNote {
   display: flex;
   justify-content: space-between;

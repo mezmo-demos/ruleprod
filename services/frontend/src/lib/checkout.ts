@@ -5,7 +5,6 @@ const CHECKOUT_URL = process.env.CHECKOUT_URL || 'http://localhost:4103';
 
 export async function getCheckoutQuote(promoCode?: string, delivery: 'standard' | 'expedited' = 'standard'): Promise<CheckoutQuote> {
   const key = await getUserKey();
-  console.log('getCheckoutQuote key:', key);
 
   const body: any = { cartKey: key, delivery };
   if (promoCode) body.promoCode = promoCode;
