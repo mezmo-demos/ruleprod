@@ -4,10 +4,14 @@
 #
 # Required repo configuration:
 #   secrets.ECR_PUSH_ROLE_ARN      — OIDC push role (terramate-ruleprod ecr stack)
-#   secrets.RELEASE_APP_ID         — GitHub App with Contents + Pull requests
-#   secrets.RELEASE_APP_PRIVATE_KEY  write on mezmo-demos/gitops. Deliberately
-#                                    not the argocd app: Argo CD only ever reads
-#                                    manifests, so it stays read-only.
+#   secrets.RELEASE_APP_CLIENT_ID   — GitHub App with Contents + Pull requests
+#   secrets.RELEASE_APP_PRIVATE_KEY   write on mezmo-demos/gitops. Deliberately
+#                                     not the argocd app: Argo CD only ever reads
+#                                     manifests, so it stays read-only.
+#                                     CLIENT_ID is the app's Client ID
+#                                     ("Iv23li..."), not its numeric App ID —
+#                                     create-github-app-token v3 deprecated
+#                                     app-id in favour of client-id.
 #   vars.ECR_REGISTRY              — <account>.dkr.ecr.<region>.amazonaws.com
 #   vars.AWS_REGION                — defaults to us-east-1 when unset
 name: build
@@ -109,7 +113,7 @@ jobs:
         id: app-token
         uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.RELEASE_APP_ID }}
+          client-id: ${{ secrets.RELEASE_APP_CLIENT_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
           owner: mezmo-demos
           repositories: gitops
