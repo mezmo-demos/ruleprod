@@ -31,10 +31,12 @@ export default async function Header() {
             <Link href="/catalog?category=vintage">Vintage</Link>
           </div>
           <div className={styles.navActions}>
-            <div className={styles.search}>
+            {/* A plain GET form: submitting lands on /catalog?q=… , which the
+                catalog service already understands. No client JS involved. */}
+            <form className={styles.search} action="/catalog">
               <Search size={16} strokeWidth={1.5} className={styles.searchIcon} />
-              <input type="text" placeholder="Search 1,240 rulers" />
-            </div>
+              <input type="search" name="q" placeholder="Search rulers" aria-label="Search rulers" />
+            </form>
             <Link href="/account" className={styles.btnOutline}>Sign in</Link>
             <Link href="/cart" className={styles.btnDark}>
               <ShoppingCart size={16} strokeWidth={1.5} style={{ marginRight: '6px' }} />

@@ -16,6 +16,7 @@ export default function ProductPurchasing({ product }: Props) {
   const [qty, setQty] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
   const [didAdd, setDidAdd] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const selectedVariant = product.variants.find(v => v.sku === selectedSku) || product.variants[0]!;
   
@@ -36,13 +37,14 @@ export default function ProductPurchasing({ product }: Props) {
 
   const handleAddToCart = async () => {
     setIsAdding(true);
+    setError(null);
     const result = await addToCartAction(selectedSku, qty);
     setIsAdding(false);
     if (result.success) {
       setDidAdd(true);
       setTimeout(() => setDidAdd(false), 2000);
     } else {
-      alert(`Error: ${result.error}`);
+      setError(result.error ?? 'Could not add this to your cart. Please try again.');
     }
   };
 
@@ -121,6 +123,8 @@ export default function ProductPurchasing({ product }: Props) {
         </button>
       </div>
       
+      {error && <p className={styles.errorNote} role="alert">{error}</p>}
+
       <div className={styles.savingsNote}>
         {savings > 0 ? (
           <span className={styles.savingsSuccess}>✓ Bulk price break applied — you save {formatCents(savings)}</span>

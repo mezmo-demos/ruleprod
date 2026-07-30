@@ -24,6 +24,10 @@
   
   --success: #2f7a4f;
   --success-bg: #e7f3ec;
+  /* The mockup has no error state, so this pair is ours — same construction as
+     success: a desaturated mid-tone on a very light tint of itself. */
+  --danger: #a3302a;
+  --danger-bg: #fbecea;
   --disabled: #c2c7d0;
 
   /* Spacing Base */

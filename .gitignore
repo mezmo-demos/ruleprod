@@ -9,3 +9,6 @@ coverage/
 .env.*.local
 .DS_Store
 npm-debug.log*
+
+# curl -c/-b jars from poking the running site by hand
+cookies.txt

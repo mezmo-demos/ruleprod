@@ -25,7 +25,11 @@ export default function CheckoutForm({ initialQuote }: Props) {
   const [firstName, setFirstName] = useState('Jonathan');
   const [lastName, setLastName] = useState('Miller');
   const [streetAddress, setStreetAddress] = useState('1204 Fabrication Way, Suite B');
+  const [city, setCity] = useState('Detroit');
+  const [state, setState] = useState('MI');
+  const [zip, setZip] = useState('48201');
   const [promoCode, setPromoCode] = useState(searchParams?.get('promoCode') || '');
+  const [error, setError] = useState<string | null>(null);
 
   const handleApplyPromo = () => {
     const params = new URLSearchParams(searchParams?.toString() || '');
@@ -37,22 +41,24 @@ export default function CheckoutForm({ initialQuote }: Props) {
     router.replace(`?${params.toString()}`);
   };
 
-  const isFormValid = email.trim() !== '' && firstName.trim() !== '' && lastName.trim() !== '' && streetAddress.trim() !== '';
+  const isFormValid = [email, firstName, lastName, streetAddress, city, state, zip]
+    .every((field) => field.trim() !== '');
 
   const handlePlaceOrder = async () => {
     if (!isFormValid) return;
 
     setIsAdding(true);
-    
+    setError(null);
+
     const request: Omit<PlaceOrderRequest, 'cartKey'> = {
       idempotencyKey: crypto.randomUUID(),
       contact: { email },
       shippingAddress: {
         name: `${firstName} ${lastName}`.trim(),
         street1: streetAddress,
-        city: 'Detroit',
-        state: 'MI',
-        zip: '48201',
+        city: city.trim(),
+        state: state.trim(),
+        zip: zip.trim(),
         country: 'US',
       },
       delivery,
@@ -61,11 +67,11 @@ export default function CheckoutForm({ initialQuote }: Props) {
 
     const result = await placeOrderAction(request);
     setIsAdding(false);
-    
+
     if (result.success && result.data) {
       router.push(`/confirmation?orderId=${result.data.orderId}`);
     } else {
-      alert(`Error: ${result.error}`);
+      setError(result.error ?? 'We could not place your order. Please try again.');
     }
   };
 
@@ -122,11 +128,39 @@ export default function CheckoutForm({ initialQuote }: Props) {
               </div>
               <div className={styles.fieldGroupSpan2}>
                 <label className={styles.label}>Street address</label>
-                <input 
-                  type="text" 
-                  className={styles.inputField} 
+                <input
+                  type="text"
+                  className={styles.inputField}
                   value={streetAddress}
                   onChange={(e) => setStreetAddress(e.target.value)}
+                />
+              </div>
+              <div className={styles.fieldGroupSpan2}>
+                <label className={styles.label}>City</label>
+                <input
+                  type="text"
+                  className={styles.inputField}
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                />
+              </div>
+              <div className={styles.fieldGroup}>
+                <label className={styles.label}>State</label>
+                <input
+                  type="text"
+                  className={styles.inputField}
+                  value={state}
+                  onChange={(e) => setState(e.target.value)}
+                />
+              </div>
+              <div className={styles.fieldGroup}>
+                <label className={styles.label}>ZIP</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  className={styles.inputField}
+                  value={zip}
+                  onChange={(e) => setZip(e.target.value)}
                 />
               </div>
             </div>
@@ -229,7 +263,7 @@ export default function CheckoutForm({ initialQuote }: Props) {
               </div>
             )}
             {initialQuote.promoError && (
-              <div style={{ color: '#e53935', fontSize: '13px', fontWeight: 500 }}>
+              <div className={styles.promoError}>
                 {initialQuote.promoError.message}
               </div>
             )}
@@ -266,6 +300,8 @@ export default function CheckoutForm({ initialQuote }: Props) {
             <span className={styles.finalTotalLabel}>Total</span>
             <span className={styles.finalTotalValue}>{formatCents(initialQuote.totalCents)}</span>
           </div>
+
+          {error && <p className={styles.orderError} role="alert">{error}</p>}
 
           <button className={styles.placeOrderBtn} onClick={handlePlaceOrder} disabled={!isFormValid || isSubmitting}>
             {isSubmitting ? 'Placing order...' : 'Place order'}

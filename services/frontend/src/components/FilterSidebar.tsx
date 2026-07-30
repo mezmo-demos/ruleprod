@@ -16,11 +16,14 @@ export default function FilterSidebar({ facets, params, categorySlug }: Props) {
   const handleChange = (e: React.FormEvent<HTMLFormElement>) => {
     const formData = new FormData(e.currentTarget);
     const searchParams = new URLSearchParams();
-    
-    // Maintain existing sort if present
-    if (params.sort) {
-      const sortVal = Array.isArray(params.sort) ? params.sort[0] : params.sort;
-      if (sortVal) searchParams.append('sort', sortVal);
+
+    // Params that live outside this form have to be carried across by hand, or
+    // changing a filter would drop the shopper's search terms and sort order.
+    // `page` is deliberately not carried: a new filter set starts at page 1.
+    for (const key of ['q', 'sort'] as const) {
+      const raw = params[key];
+      const value = Array.isArray(raw) ? raw[0] : raw;
+      if (value) searchParams.append(key, value);
     }
 
     formData.forEach((value, key) => {

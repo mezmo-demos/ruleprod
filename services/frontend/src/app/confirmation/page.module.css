@@ -226,6 +226,13 @@
   white-space: nowrap;
 }
 
+.upsellError {
+  margin-top: 10px;
+  color: var(--danger);
+  font-size: 14px;
+  font-weight: 500;
+}
+
 .actions {
   display: flex;
   gap: 16px;
