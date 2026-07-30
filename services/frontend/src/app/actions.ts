@@ -1,6 +1,15 @@
 'use server';
 
-import { addToCart as apiAddToCart, updateCartItem as apiUpdateCartItem, removeFromCart as apiRemoveFromCart } from '@/lib/cart';
+import {
+  addToCart as apiAddToCart,
+  updateCartItem as apiUpdateCartItem,
+  removeFromCart as apiRemoveFromCart,
+  saveLineForLater as apiSaveLineForLater,
+  moveLineToCart as apiMoveLineToCart,
+  saveCart as apiSaveCart,
+  restoreSavedCart as apiRestoreSavedCart,
+  deleteSavedCart as apiDeleteSavedCart,
+} from '@/lib/cart';
 import { placeOrder as apiPlaceOrder } from '@/lib/checkout';
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
@@ -113,6 +122,68 @@ export async function removeFromCartAction(lineId: string) {
     revalidatePath('/cart');
     revalidatePath('/checkout');
     revalidatePath('/');
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
+}
+
+/** Cart-shaped mutations all invalidate the same three views. */
+function revalidateCart() {
+  revalidatePath('/cart');
+  revalidatePath('/checkout');
+  revalidatePath('/'); // Global header cart count
+  revalidatePath('/account');
+}
+
+export async function saveForLaterAction(lineId: string) {
+  try {
+    await apiSaveLineForLater(lineId);
+    revalidateCart();
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
+}
+
+export async function moveToCartAction(lineId: string) {
+  try {
+    await apiMoveLineToCart(lineId);
+    revalidateCart();
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
+}
+
+export async function saveCartAction(name: string) {
+  try {
+    const trimmed = name.trim();
+    if (trimmed === '') {
+      return { success: false, error: 'Give this cart a name first.' };
+    }
+    await apiSaveCart(trimmed);
+    revalidateCart();
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
+}
+
+export async function restoreSavedCartAction(savedCartId: string, mode: 'merge' | 'replace') {
+  try {
+    await apiRestoreSavedCart(savedCartId, mode);
+    revalidateCart();
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
+}
+
+export async function deleteSavedCartAction(savedCartId: string) {
+  try {
+    await apiDeleteSavedCart(savedCartId);
+    revalidateCart();
     return { success: true };
   } catch (error) {
     return { success: false, error: (error as Error).message };

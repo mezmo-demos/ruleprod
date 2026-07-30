@@ -1,17 +1,30 @@
 import Link from "next/link";
 import Image from "next/image";
 import styles from "./page.module.css";
-import { getCart } from "@/lib/cart";
-import { formatCents, resolveImage } from "@/lib/utils";
+import { getCart, listSavedCarts } from "@/lib/cart";
+import { getPersona } from "@/lib/auth";
+import { formatCents, resolveImage, shortDate } from "@/lib/utils";
 import CartLineItem from "@/components/CartLineItem";
+import BumpToTierButton from "@/components/BumpToTierButton";
+import MoveToCartButton from "@/components/MoveToCartButton";
+import SaveCartForm from "@/components/SaveCartForm";
+import SavedCartControls from "@/components/SavedCartControls";
 
 export default async function CartPage() {
-  let cart;
-  try {
-    cart = await getCart();
-  } catch (e) {
-    console.error(e);
+  const persona = await getPersona();
+
+  // A failed saved-carts call must not blank the cart itself.
+  const [cartResult, savedCartResult] = await Promise.allSettled([getCart(), listSavedCarts()]);
+
+  if (cartResult.status === 'rejected') {
+    console.error('cart: fetch failed', cartResult.reason);
   }
+  if (savedCartResult.status === 'rejected') {
+    console.error('cart: saved carts fetch failed', savedCartResult.reason);
+  }
+
+  const cart = cartResult.status === 'fulfilled' ? cartResult.value : undefined;
+  const savedCarts = savedCartResult.status === 'fulfilled' ? savedCartResult.value : [];
 
   if (!cart || cart.lines.length === 0) {
     return (
@@ -51,7 +64,11 @@ export default async function CartPage() {
                   You&apos;ll save an additional {formatCents(nudgeLine.unitPriceCents - nudgeLine.nextTier.unitPriceCents)} per unit on the {nudgeLine.product.title}.
                 </p>
               </div>
-              <button className={styles.bumpBtn}>Bump to {nudgeLine.nextTier.minQty}</button>
+              <BumpToTierButton
+                lineId={nudgeLine.id}
+                minQty={nudgeLine.nextTier.minQty}
+                className={styles.bumpBtn}
+              />
             </div>
           )}
 
@@ -69,26 +86,45 @@ export default async function CartPage() {
                       <p className={styles.savedSpec}>{line.product.variantLabel} · {line.product.specLine}</p>
                       <p className={styles.savedPrice}>{formatCents(line.unitPriceCents)}</p>
                     </div>
-                    <button className={styles.moveBtn}>Move to cart</button>
+                    <MoveToCartButton lineId={line.id} className={styles.moveBtn} />
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          <div className={styles.savedCartsSection}>
+          <div id="saved-carts" className={styles.savedCartsSection}>
             <div className={styles.savedCartsHeader}>
               <h2 className={styles.sectionH2}>Saved carts</h2>
-              <button className={styles.saveCartBtn}>Save this cart</button>
+              <SaveCartForm triggerClassName={styles.saveCartBtn} />
             </div>
-            <div className={styles.savedCartsGrid}>
-              {/* This would come from a separate API call in a real app */}
-              <div className={styles.savedCartCard}>
-                <h3 className={styles.savedCartTitle}>Workshop restock</h3>
-                <p className={styles.savedCartMeta}>7 items · $412.00 · 14 Jul</p>
-                <button className={styles.restoreBtn}>Restore</button>
+            {savedCarts.length === 0 ? (
+              <p className={styles.savedCartsEmpty}>
+                Nothing saved yet. Saving a cart snapshots what&apos;s in it now — the
+                live cart carries on unchanged.
+              </p>
+            ) : (
+              <div className={styles.savedCartsGrid}>
+                {savedCarts.map((saved) => (
+                  <div key={saved.id} className={styles.savedCartCard}>
+                    <h3 className={styles.savedCartTitle}>{saved.name}</h3>
+                    <p className={styles.savedCartMeta}>
+                      {saved.itemCount} {saved.itemCount === 1 ? 'item' : 'items'} ·{' '}
+                      {formatCents(saved.totalCents)} · {shortDate(saved.savedAt)}
+                    </p>
+                    <div className={styles.savedCartActions}>
+                      <SavedCartControls
+                        savedCartId={saved.id}
+                        name={saved.name}
+                        restoreClassName={styles.restoreBtn}
+                        deleteClassName={styles.deleteBtn}
+                        errorClassName={styles.saveCartError}
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
+            )}
           </div>
 
         </div>
@@ -124,9 +160,17 @@ export default async function CartPage() {
             </div>
 
             <div className={styles.summaryActions}>
-              <Link href="/checkout" className={styles.checkoutGuestBtn}>Checkout as guest</Link>
-              <Link href="/checkout" className={styles.checkoutSignInBtn}>Sign in & checkout</Link>
-              <button className={styles.saveForLaterLink}>Save cart for later</button>
+              {persona ? (
+                <Link href="/checkout" className={styles.checkoutSignInBtn}>
+                  Checkout as {persona.name.split(' ')[0]}
+                </Link>
+              ) : (
+                <>
+                  <Link href="/checkout" className={styles.checkoutGuestBtn}>Checkout as guest</Link>
+                  <Link href="/signin?next=/checkout" className={styles.checkoutSignInBtn}>Sign in &amp; checkout</Link>
+                </>
+              )}
+              <a href="#saved-carts" className={styles.saveForLaterLink}>Save cart for later</a>
             </div>
 
             <div className={styles.summaryDivider} />
