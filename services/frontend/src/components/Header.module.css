@@ -95,3 +95,37 @@
   font-size: 14px;
   font-weight: 600;
 }
+
+/* Signed-in state: the same footprint as .btnOutline, wearing the persona. */
+.accountChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-full);
+  padding: 5px 16px 5px 5px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.accountChip:hover {
+  border-color: var(--accent);
+}
+
+.accountAvatar {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-full);
+  background-color: var(--accent-soft);
+  color: var(--accent);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.accountName {
+  white-space: nowrap;
+}

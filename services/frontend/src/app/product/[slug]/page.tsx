@@ -4,6 +4,7 @@ import styles from "./page.module.css";
 import { getProduct, getRelatedProducts } from "@/lib/catalog";
 import { resolveImage, formatCents } from "@/lib/utils";
 import ProductPurchasing from "@/components/ProductPurchasing";
+import ProductGallery from "@/components/ProductGallery";
 import { notFound } from "next/navigation";
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -26,16 +27,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       <div className={styles.productLayout}>
         {/* Left Column: Media & Details */}
         <div className={styles.leftCol}>
-          <div className={styles.primaryImage}>
-            <Image src={resolveImage(product.images[0])} alt={product.title} fill style={{ objectFit: 'cover' }} />
-          </div>
-          <div className={styles.thumbnailStrip}>
-            {product.images.map((img, i) => (
-              <button key={i} className={`${styles.thumbnail} ${i === 0 ? styles.thumbnailActive : ''}`}>
-                <Image src={resolveImage(img)} alt={`Thumbnail ${i + 1}`} fill style={{ objectFit: 'cover' }} />
-              </button>
-            ))}
-          </div>
+          <ProductGallery images={product.images} title={product.title} />
           
           <div className={styles.cardsRow}>
             <div className={styles.detailCard}>

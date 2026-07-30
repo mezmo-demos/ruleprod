@@ -1,0 +1,234 @@
+.main {
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 44px;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 24px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.backLink:hover {
+  color: var(--accent);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 32px;
+}
+
+.headerMeta {
+  margin-top: 8px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.outlinePill {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-full);
+  padding: 10px 20px;
+  background-color: transparent;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.outlinePill:hover {
+  border-color: var(--accent);
+}
+
+.badgeSuccess,
+.badgeAccentSoft {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--radius-full);
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badgeSuccess {
+  background-color: var(--success-bg);
+  color: var(--success);
+}
+
+.badgeAccentSoft {
+  background-color: var(--accent-soft);
+  color: var(--accent);
+}
+
+.card {
+  margin-bottom: 20px;
+  padding: 24px 28px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background-color: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.cardTitle {
+  margin-bottom: 16px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.lineList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  list-style: none;
+}
+
+.line {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.lineThumb {
+  position: relative;
+  flex: 0 0 auto;
+  width: 64px;
+  height: 64px;
+  overflow: hidden;
+  border-radius: var(--radius-thumb);
+  background-color: var(--surface-muted);
+}
+
+.lineDetails {
+  min-width: 0;
+  flex: 1;
+}
+
+.lineTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.lineTitle:hover {
+  color: var(--accent);
+}
+
+.lineSpec {
+  margin-top: 3px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.lineQty {
+  font-size: 14px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.lineTotal {
+  min-width: 88px;
+  text-align: right;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+.columns .card {
+  margin-bottom: 0;
+  height: 100%;
+}
+
+.blockValue {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink-body);
+}
+
+.blockNote {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.totals {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.totalRow,
+.totalRowGrand {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 14px;
+  color: var(--ink-body);
+}
+
+.totalRowGrand {
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.savings {
+  color: var(--success);
+}
+
+@media print {
+  .backLink,
+  .outlinePill {
+    display: none;
+  }
+
+  .card {
+    box-shadow: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .main {
+    padding: 28px 20px;
+  }
+
+  .header {
+    flex-direction: column;
+  }
+
+  .line {
+    flex-wrap: wrap;
+  }
+}

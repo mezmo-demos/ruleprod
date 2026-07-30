@@ -21,29 +21,29 @@ export default function Footer() {
           </div>
           <div className={styles.links}>
             <h3>Support</h3>
-            <Link href="#">Shipping</Link>
-            <Link href="#">Returns</Link>
-            <Link href="#">Bulk pricing</Link>
-            <Link href="#">Purchase orders</Link>
+            <Link href="/help#shipping">Shipping</Link>
+            <Link href="/help#returns">Returns</Link>
+            <Link href="/help#bulk-pricing">Bulk pricing</Link>
+            <Link href="/help#purchase-orders">Purchase orders</Link>
           </div>
           <div className={styles.links}>
             <h3>Company</h3>
             <Link href="/about">About</Link>
-            <Link href="#">Contact</Link>
+            <Link href="/contact">Contact</Link>
           </div>
           <div className={styles.links}>
             <h3>Account</h3>
-            <Link href="/account">Sign in</Link>
-            <Link href="/account">Order history</Link>
-            <Link href="/cart">Saved carts</Link>
+            <Link href="/signin">Sign in</Link>
+            <Link href="/account#orders">Order history</Link>
+            <Link href="/account#saved-carts">Saved carts</Link>
           </div>
         </div>
         <div className={styles.bottomBar}>
           <p>© 2026 Rule Prod. A demonstration store — no payment is ever taken.</p>
           <div className={styles.legalLinks}>
-            <Link href="#">Privacy</Link>
-            <Link href="#">Terms</Link>
-            <Link href="#">Accessibility</Link>
+            <Link href="/legal#privacy">Privacy</Link>
+            <Link href="/legal#terms">Terms</Link>
+            <Link href="/legal#accessibility">Accessibility</Link>
           </div>
         </div>
       </div>

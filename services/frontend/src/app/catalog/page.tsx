@@ -4,7 +4,8 @@ import styles from "./page.module.css";
 import { getProducts, getCategories } from "@/lib/catalog";
 import { resolveImage, formatCents } from "@/lib/utils";
 import FilterSidebar from "@/components/FilterSidebar";
-import { ChevronDown, ChevronRight, MoreHorizontal } from "lucide-react";
+import CatalogSort, { parseSort } from "@/components/CatalogSort";
+import { ChevronRight, MoreHorizontal } from "lucide-react";
 
 /**
  * A link to another page of the same result set: every active param survives,
@@ -61,12 +62,7 @@ export default async function Catalog({ searchParams }: { searchParams: Promise<
             <span className={styles.resultCount}>{total} products</span>
           </div>
           <div className={styles.controls}>
-            <button className={styles.controlPill} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-              Sort: {params.sort || 'Popular'} <ChevronDown size={14} strokeWidth={2} />
-            </button>
-            <button className={styles.controlPill} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-              View: Grid <ChevronDown size={14} strokeWidth={2} />
-            </button>
+            <CatalogSort value={parseSort(params.sort)} />
           </div>
         </div>
       </div>

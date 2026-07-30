@@ -140,15 +140,38 @@
   color: var(--ink);
 }
 
+.lineActions {
+  display: flex;
+  gap: 12px;
+}
+
 .saveForLaterBtn {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-family: inherit;
   font-size: 13px;
   font-weight: 500;
   color: var(--muted-light);
   text-decoration: underline;
+  white-space: nowrap;
+  cursor: pointer;
 }
 
-.saveForLaterBtn:hover {
+.saveForLaterBtn:hover:not(:disabled) {
   color: var(--ink);
+}
+
+.saveForLaterBtn:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.lineError {
+  max-width: 200px;
+  font-size: 12px;
+  text-align: right;
+  color: var(--danger);
 }
 
 .bulkNudge {
@@ -181,11 +204,19 @@
 .bumpBtn {
   background-color: var(--surface);
   color: var(--ink);
+  border: none;
   border-radius: var(--radius-full);
   padding: 12px 24px;
+  font-family: inherit;
   font-size: 14px;
   font-weight: 600;
   white-space: nowrap;
+  cursor: pointer;
+}
+
+.bumpBtn:disabled {
+  cursor: progress;
+  opacity: 0.6;
 }
 
 .sectionH2 {
@@ -250,9 +281,22 @@
   border: 1px solid var(--border-control);
   border-radius: var(--radius-full);
   padding: 10px 20px;
+  background-color: transparent;
+  font-family: inherit;
   font-size: 14px;
   font-weight: 600;
   color: var(--ink);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.moveBtn:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.moveBtn:disabled {
+  cursor: progress;
+  opacity: 0.6;
 }
 
 .savedCartsSection {
@@ -273,9 +317,101 @@
 }
 
 .saveCartBtn {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-family: inherit;
   font-size: 14px;
   font-weight: 600;
   color: var(--accent);
+  cursor: pointer;
+}
+
+/* Inline "name this cart" form — no blocking prompt() dialog. */
+.saveCartForm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.saveCartInput {
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-field);
+  padding: 8px 12px;
+  background-color: var(--surface);
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.saveCartInput:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.saveCartConfirm {
+  border: none;
+  border-radius: var(--radius-full);
+  padding: 8px 18px;
+  background-color: var(--ink);
+  color: white;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.saveCartCancel {
+  border: none;
+  background: transparent;
+  padding: 8px 4px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.saveCartConfirm:disabled,
+.saveCartCancel:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.saveCartError {
+  flex-basis: 100%;
+  font-size: 13px;
+  color: var(--danger);
+}
+
+.savedCartsEmpty {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.savedCartActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: auto;
+}
+
+.deleteBtn {
+  border: none;
+  background: transparent;
+  padding: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.deleteBtn:hover:not(:disabled) {
+  color: var(--danger);
 }
 
 .savedCartsGrid {
@@ -308,10 +444,19 @@
 .restoreBtn {
   background-color: var(--surface-muted);
   color: var(--ink);
+  border: none;
   border-radius: var(--radius-full);
   padding: 8px 16px;
+  font-family: inherit;
   font-size: 13px;
   font-weight: 600;
+  cursor: pointer;
+}
+
+.restoreBtn:disabled,
+.deleteBtn:disabled {
+  cursor: progress;
+  opacity: 0.6;
 }
 
 /* Right Column */
@@ -401,10 +546,12 @@
 }
 
 .saveForLaterLink {
-  font-size: 14px;
-  color: var(--accent);
-  font-weight: 500;
+  display: block;
   margin-top: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--accent);
+  text-align: center;
 }
 
 .summaryFinePrint {

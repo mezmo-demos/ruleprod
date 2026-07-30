@@ -48,13 +48,43 @@
   gap: 12px;
 }
 
+/* A real <select> wearing the pill's clothes — sort is a querystring param. */
 .controlPill {
+  display: inline-flex;
+  align-items: center;
   border: 1px solid var(--border-control);
   border-radius: var(--radius-full);
-  padding: 8px 16px;
+  padding: 0 12px 0 16px;
   font-size: 14px;
   font-weight: 600;
   color: var(--ink);
+}
+
+.controlPill:hover {
+  border-color: var(--accent);
+}
+
+.controlPill select {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 8px 20px 8px 0;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.controlPill::after {
+  content: '';
+  width: 7px;
+  height: 7px;
+  margin-left: -16px;
+  border-right: 2px solid var(--ink);
+  border-bottom: 2px solid var(--ink);
+  transform: translateY(-2px) rotate(45deg);
+  pointer-events: none;
 }
 
 .layout {
