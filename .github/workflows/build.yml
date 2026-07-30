@@ -1,6 +1,7 @@
 # Release loop (gitops docs/WEBSITE.md): build changed services on arm64,
-# push git-SHA-tagged images to ECR via OIDC (no stored keys), then open an
-# image-tag bump PR against mezmo-demos/gitops. Merge = release, revert = rollback.
+# push git-SHA-tagged images to ECR via OIDC (no stored keys), then — once the
+# verify job passes — open an image-tag bump PR against mezmo-demos/gitops.
+# Merge = release, revert = rollback.
 #
 # Required repo configuration:
 #   secrets.ECR_PUSH_ROLE_ARN      — OIDC push role (terramate-ruleprod ecr stack)
@@ -33,6 +34,26 @@ permissions:
   id-token: write
 
 jobs:
+  # Same checks as ci.yml, which is PR-only. The PR run tests refs/pull/N/merge
+  # — the merge preview at that moment — so if main moves before the merge, the
+  # commit that actually lands here was never tested. This is that gate.
+  #
+  # It blocks `release`, not `build`: images are immutable and SHA-tagged, so
+  # pushing one for a failing commit is harmless (nothing ever references it),
+  # and running verify alongside the image matrix instead of before it keeps
+  # release waiting on max(build, verify) rather than the sum.
+  verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+
   changes:
     runs-on: ubuntu-24.04
     outputs:
@@ -105,7 +126,7 @@ jobs:
           docker push "$IMAGE"
 
   release:
-    needs: [changes, build]
+    needs: [changes, build, verify]
     if: needs.changes.outputs.services != '[]'
     runs-on: ubuntu-24.04
     steps:
