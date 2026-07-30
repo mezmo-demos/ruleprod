@@ -78,6 +78,8 @@ jobs:
               - 'services/checkout/**'
             orders:
               - 'services/orders/**'
+            loadgen:
+              - 'services/loadgen/**'
       - name: Resolve service list
         id: list
         env:
@@ -85,7 +87,7 @@ jobs:
           REQUESTED: ${{ inputs.services }}
           SHARED_CHANGED: ${{ steps.filter.outputs.shared }}
         run: |
-          all=(frontend catalog cart checkout orders)
+          all=(frontend catalog cart checkout orders loadgen)
           if [ "$EVENT" = "workflow_dispatch" ]; then
             if [ "$REQUESTED" = "all" ]; then svcs=("${all[@]}"); else read -ra svcs <<< "$REQUESTED"; fi
           elif [ "$SHARED_CHANGED" = "true" ]; then
@@ -97,6 +99,7 @@ jobs:
             [ "${{ steps.filter.outputs.cart }}" = "true" ] && svcs+=(cart)
             [ "${{ steps.filter.outputs.checkout }}" = "true" ] && svcs+=(checkout)
             [ "${{ steps.filter.outputs.orders }}" = "true" ] && svcs+=(orders)
+            [ "${{ steps.filter.outputs.loadgen }}" = "true" ] && svcs+=(loadgen)
           fi
           echo "services=$(jq -nc '$ARGS.positional' --args "${svcs[@]}")" >> "$GITHUB_OUTPUT"
 
@@ -149,8 +152,15 @@ jobs:
           REGISTRY: ${{ vars.ECR_REGISTRY }}
         run: |
           for svc in $(jq -r '.[]' <<< "$SERVICES"); do
+            manifest="gitops/workloads/services/${svc}/deployment.yaml"
+            # A service can merge before its gitops manifest exists (bootstrap
+            # order): the image is pushed and waits; nothing to bump yet.
+            if [ ! -f "$manifest" ]; then
+              echo "::warning::no gitops manifest for ${svc}; skipping tag bump"
+              continue
+            fi
             yq -i ".spec.template.spec.containers[0].image = \"${REGISTRY}/ruleprod/${svc}:${GITHUB_SHA}\"" \
-              "gitops/workloads/services/${svc}/deployment.yaml"
+              "$manifest"
           done
       - name: Open bump PR
         uses: peter-evans/create-pull-request@v8
