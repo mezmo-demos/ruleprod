@@ -77,6 +77,7 @@ function toSummary(row: OrderRow, images: readonly string[]): OrderSummary {
     unitCount: row.unit_count,
     summaryLine: summaryLine(row.unit_count, row.placed_at),
     thumbs: thumbs(images),
+    paymentMethod: row.payment.method,
   };
 }
 

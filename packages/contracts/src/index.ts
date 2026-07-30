@@ -441,6 +441,8 @@ export interface OrderSummary {
   unitCount: number;
   summaryLine: string;
   thumbs: string[];
+  /** How it was paid — the account page groups purchase orders separately. */
+  paymentMethod: PaymentMethod;
 }
 
 export interface Order extends OrderSummary {

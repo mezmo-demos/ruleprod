@@ -2,6 +2,17 @@ export function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
+const SHORT_MONTHS = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+] as const;
+
+/** '2026-07-14T…' → '14 Jul'. Matches the orders service's summary lines. */
+export function shortDate(iso: string): string {
+  const date = new Date(iso);
+  return `${date.getUTCDate()} ${SHORT_MONTHS[date.getUTCMonth()]}`;
+}
+
 export function resolveImage(key: string | undefined): string {
   const map: Record<string, string> = {
     'hero-fanned': '/images/img-1.jpg',
