@@ -87,15 +87,32 @@ export default async function Catalog({ searchParams }: { searchParams: Promise<
             {products.map((prod) => (
               <Link key={prod.slug} href={`/product/${prod.slug}`} className={styles.productCard}>
                 <div className={styles.productImage}>
-                  {prod.badge === 'best_seller' && <span className={styles.productBadge}>Best seller</span>}
-                  {prod.badge === 'low_stock' && <span className={`${styles.productBadge} ${styles.productBadgeAccent}`}>Low stock</span>}
+                  {/* A live sale outranks the merchandising badge — it is the more
+                      useful thing to know at a glance, and they share the corner.
+                      Accent, because savings read as accent everywhere in this
+                      design (bulk savings, promo, "Save up to 30%"). */}
+                  {prod.sale ? (
+                    <span className={`${styles.productBadge} ${styles.productBadgeAccent}`}>
+                      {Math.round(prod.sale.percentOff)}% off
+                    </span>
+                  ) : (
+                    <>
+                      {prod.badge === 'best_seller' && <span className={styles.productBadge}>Best seller</span>}
+                      {prod.badge === 'low_stock' && <span className={`${styles.productBadge} ${styles.productBadgeAccent}`}>Low stock</span>}
+                    </>
+                  )}
                   <Image src={resolveImage(prod.image)} alt={prod.title} fill style={{ objectFit: 'cover' }} />
                 </div>
                 <div className={styles.productInfo}>
                   <h3 className={styles.productTitle}>{prod.title}</h3>
                   <p className={styles.productSpec}>{prod.specLine}</p>
                   <div className={styles.priceRow}>
-                    <span className={styles.productPrice}>{formatCents(prod.priceCents)}</span>
+                    <span className={styles.productPrice}>
+                      {formatCents(prod.priceCents)}
+                      {prod.sale && (
+                        <s className={styles.wasPrice}>{formatCents(prod.sale.basePriceCents)}</s>
+                      )}
+                    </span>
                     {prod.bulk ? (
                       <span className={styles.bulkPrice}>{prod.bulk.minQty}+ · {formatCents(prod.bulk.unitPriceCents)}</span>
                     ) : (

@@ -19,13 +19,18 @@ export default function ProductPurchasing({ product }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   const selectedVariant = product.variants.find(v => v.sku === selectedSku) || product.variants[0]!;
-  
-  // Calculate current unit price based on quantity and tiers
+
+  // priceCents is already sale-adjusted; basePriceCents is the pre-sale "was".
+  const onSale = selectedVariant.basePriceCents > selectedVariant.priceCents;
+
+  // Current unit price for this quantity. A tier only counts when it actually
+  // beats the sale price — the same rule the checkout quote applies, so the
+  // ladder here can never promise a price the server would not honour.
   let unitPrice = selectedVariant.priceCents;
   let activeTierIndex = -1;
-  
+
   selectedVariant.tiers.forEach((tier, index) => {
-    if (qty >= tier.minQty) {
+    if (qty >= tier.minQty && tier.unitPriceCents < selectedVariant.priceCents) {
       unitPrice = tier.unitPriceCents;
       activeTierIndex = index;
     }
@@ -52,13 +57,21 @@ export default function ProductPurchasing({ product }: Props) {
     <div className={styles.container}>
       <div className={styles.badgeRow}>
         {product.badge === 'best_seller' && <span className={styles.badgeAccentSoft}>Best seller</span>}
+        {product.sale && (
+          <span className={styles.badgeAccentSoft}>
+            {Math.round(product.sale.percentOff)}% off
+          </span>
+        )}
         <span className={styles.badgeSuccess}>{selectedVariant.stock} in stock</span>
       </div>
 
       <h1 className={styles.productH1}>{product.title}</h1>
-      
+
       <div className={styles.priceRow}>
         <span className={styles.mainPrice}>{formatCents(unitPrice)}</span>
+        {onSale && activeTierIndex === -1 && (
+          <s className={styles.wasPrice}>{formatCents(selectedVariant.basePriceCents)}</s>
+        )}
         <span className={styles.priceMeta}>{product.specs.graduation} graduation · SKU {selectedSku}</span>
       </div>
       

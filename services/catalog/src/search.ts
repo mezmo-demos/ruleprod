@@ -129,6 +129,50 @@ export function escapeLike(value: string): string {
 export const FROM_CLAUSE = `FROM catalog.products p
 JOIN catalog.variants dv ON dv.product_slug = p.slug AND dv.is_default`;
 
+/**
+ * The default variant's lowest bulk tier, as the card's "10+ · $30.60" teaser.
+ */
+export const BULK_TEASER_JOIN = `LEFT JOIN LATERAL (
+  SELECT t.min_qty, t.unit_price_cents
+  FROM catalog.bulk_tiers t
+  WHERE t.sku = dv.sku
+  ORDER BY t.min_qty ASC
+  LIMIT 1
+) lt ON true`;
+
+/**
+ * Largest sale percent whose window is open right now, or NULL. Start
+ * inclusive, end exclusive — the same boundary `isSaleActive` uses. The
+ * percentage is returned rather than the discounted price so callers apply
+ * `saleAdjustedUnitCents`, keeping browse prices bit-identical to quotes.
+ *
+ * Correlates on `p.slug`, so it only composes with FROM_CLAUSE.
+ */
+export const ACTIVE_SALE_JOIN = `LEFT JOIN LATERAL (
+  SELECT max(s.percent_off) AS percent_off
+  FROM catalog.sales s
+  WHERE s.product_slug = p.slug
+    AND now() >= s.starts_at
+    AND now() <  s.ends_at
+) sale ON true`;
+
+/** The columns every ProductCard is built from. Pairs with CARD_JOINS. */
+export const CARD_COLUMNS = `p.slug,
+  p.title,
+  p.spec_line AS "specLine",
+  p.images[1] AS image,
+  p.badge,
+  dv.price_cents AS "priceCents",
+  dv.stock,
+  lt.min_qty AS "bulkMinQty",
+  lt.unit_price_cents AS "bulkUnitPriceCents",
+  sale.percent_off AS "salePercentOff"`;
+
+/** FROM plus the joins CARD_COLUMNS depends on. */
+export const CARD_JOINS = `${FROM_CLAUSE}
+${BULK_TEASER_JOIN}
+${ACTIVE_SALE_JOIN}`;
+
 interface WhereBuild {
   clauses: string[];
   values: unknown[];
@@ -213,23 +257,8 @@ export function buildListQuery(params: ListParams): Sql {
   values.push(params.perPage, (params.page - 1) * params.perPage);
 
   const text = `SELECT
-  p.slug,
-  p.title,
-  p.spec_line AS "specLine",
-  p.images[1] AS image,
-  p.badge,
-  dv.price_cents AS "priceCents",
-  dv.stock,
-  lt.min_qty AS "bulkMinQty",
-  lt.unit_price_cents AS "bulkUnitPriceCents"
-${FROM_CLAUSE}
-LEFT JOIN LATERAL (
-  SELECT t.min_qty, t.unit_price_cents
-  FROM catalog.bulk_tiers t
-  WHERE t.sku = dv.sku
-  ORDER BY t.min_qty ASC
-  LIMIT 1
-) lt ON true
+  ${CARD_COLUMNS}
+${CARD_JOINS}
 ${whereSql(where)}
 ${orderByFor(params.sort)}
 LIMIT ${limitPh} OFFSET ${offsetPh}`;
