@@ -79,6 +79,24 @@ services:
       postgres:
         condition: service_healthy
 
+  loadgen:
+    build:
+      context: .
+      dockerfile: services/loadgen/Dockerfile
+    # Opt-in (compose profile, not to be confused with LOADGEN_PROFILE):
+    #   docker compose --profile loadgen up
+    profiles: [loadgen]
+    environment:
+      FRONTEND_URL: http://frontend:3000
+      CATALOG_URL: http://catalog:3000
+      CART_URL: http://cart:3000
+      CHECKOUT_URL: http://checkout:3000
+      ORDERS_URL: http://orders:3000
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      LOADGEN_PROFILE: steady
+    depends_on:
+      - frontend
+
   frontend:
     build:
       context: .
