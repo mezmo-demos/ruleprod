@@ -8,6 +8,17 @@ describe('configFromEnv', () => {
     expect(config.frontendUrl).toBe('http://frontend.ruleprod-apps.svc.cluster.local');
     expect(config.urls.cart).toBe('http://cart.ruleprod-apps.svc.cluster.local');
     expect(config.requestTimeoutMs).toBe(10_000);
+    expect(config.emailDomain).toBe('loadgen.example');
+    expect(config.userAgent).toBe('ruleprod-loadgen/0.1');
+  });
+
+  it('lets stealth runs override the identity tells', () => {
+    const config = configFromEnv({
+      LOADGEN_EMAIL_DOMAIN: 'fastmail.example',
+      LOADGEN_USER_AGENT: 'Mozilla/5.0',
+    });
+    expect(config.emailDomain).toBe('fastmail.example');
+    expect(config.userAgent).toBe('Mozilla/5.0');
   });
 
   it('selects a profile by name', () => {

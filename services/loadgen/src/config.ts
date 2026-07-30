@@ -41,6 +41,14 @@ export interface LoadgenConfig {
   urls: ReturnType<typeof serviceUrls>;
   /** Per-request timeout; a journey step past this is a failed step. */
   requestTimeoutMs: number;
+  /**
+   * Domain for synthetic shopper emails. The loud default is unmistakably
+   * fake; stealth deployments (README, "Blending in") set something a casual
+   * reader of order rows would skim past.
+   */
+  emailDomain: string;
+  /** User-Agent sent on frontend page views; stealth sets a browser string. */
+  userAgent: string;
 }
 
 /**
@@ -80,6 +88,8 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env): LoadgenConf
       'LOADGEN_REQUEST_TIMEOUT_MS',
       10_000,
     ),
+    emailDomain: env.LOADGEN_EMAIL_DOMAIN ?? 'loadgen.example',
+    userAgent: env.LOADGEN_USER_AGENT ?? 'ruleprod-loadgen/0.1',
   };
 }
 

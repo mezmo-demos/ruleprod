@@ -94,7 +94,7 @@ export function makeClients(
   return {
     async pageView(path) {
       const response = await request(`page:${path}`, `${frontendUrl}${path}`, {
-        headers: { cookie: session.cookie },
+        headers: { cookie: session.cookie, 'user-agent': config.userAgent },
       });
       // Drain so undici can reuse the socket; the HTML itself is irrelevant.
       await response.arrayBuffer();

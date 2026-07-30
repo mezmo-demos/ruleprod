@@ -13,6 +13,8 @@ const config = {
     orders: 'http://orders.test',
   },
   requestTimeoutMs: 1000,
+  emailDomain: 'loadgen.example',
+  userAgent: 'ruleprod-loadgen/0.1',
 } as const;
 
 interface Call {
@@ -37,6 +39,7 @@ describe('makeClients', () => {
     await makeClients(config, session, fetchFn).pageView('/catalog?category=trades');
     expect(calls[0]?.url).toBe('http://frontend.test/catalog?category=trades');
     expect(new Headers(calls[0]?.init?.headers).get('cookie')).toBe(session.cookie);
+    expect(new Headers(calls[0]?.init?.headers).get('user-agent')).toBe(config.userAgent);
   });
 
   it('scopes cart calls to the session cart and encodes the key', async () => {

@@ -16,7 +16,7 @@ let shuttingDown = false;
 
 function launchJourney(): void {
   const name = pickWeighted(JOURNEY_MIX);
-  const session = mintSession();
+  const session = mintSession(Math.random, config.emailDomain);
   inFlight += 1;
   counters.launched += 1;
   // Fire-and-forget: the arrival loop must keep its cadence regardless of how

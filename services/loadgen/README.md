@@ -53,10 +53,43 @@ instead of the load politely backing off.
 | `LOADGEN_REQUEST_TIMEOUT_MS`  | `10000`                                           | per-request timeout               |
 | `FRONTEND_URL`                | `http://frontend.ruleprod-apps.svc.cluster.local` | page-view target                  |
 | `CATALOG_URL` etc.            | cluster DNS                                       | backend bases (see telemetry pkg) |
+| `LOADGEN_EMAIL_DOMAIN`        | `loadgen.example`                                 | domain on synthetic order emails  |
+| `LOADGEN_USER_AGENT`          | `ruleprod-loadgen/0.1`                            | UA header on frontend page views  |
 
 A `loadgen stats` line (launched / completed / failed / shed, in-flight) is
 logged every minute. Nonzero `shed` means the estate is not keeping up with
 the offered load.
+
+## Blending in (Aura scenarios)
+
+When loadgen is background traffic for an Aura exercise, the point is that the
+agent under observation should not be able to trivially separate the synthetic
+load from organic traffic. Two tells are configurable:
+
+| env                    | loud default           | quiet value              |
+| ---------------------- | ---------------------- | ------------------------ |
+| `LOADGEN_EMAIL_DOMAIN` | `loadgen.example`      | e.g. `fastmail.example`  |
+| `LOADGEN_USER_AGENT`   | `ruleprod-loadgen/0.1` | a real browser UA string |
+
+Deploy it out of the way, too. loadgen originates traffic and serves nothing,
+so nothing needs to reach it. Run it in a **separate namespace** from
+`ruleprod-apps` (e.g. `ruleprod-loadgen`) with only egress to the storefront;
+it does not belong in the same namespace listing the agent is likely to read
+first.
+
+Two caveats worth stating plainly, because config alone does not hide them:
+
+- **`loadgen.synthetic=true`** is stamped into `OTEL_RESOURCE_ATTRIBUTES` on
+  every span and log line. That is deliberate honesty for the operators of the
+  estate — it is not stripped by the settings above. If a scenario needs the
+  telemetry itself to be indistinguishable, that is a separate, explicit
+  decision to make in the Dockerfile, not an accident of these knobs.
+- Traffic still **originates from the loadgen pod's IP / namespace**. An agent
+  with access to the mesh or ALB access logs can group by source. Namespace
+  separation raises the bar; it does not make loadgen invisible.
+
+For anything past this — jitter on the arrival clock, rotating source
+identities — say what the scenario needs and we can extend it.
 
 ## Running locally
 

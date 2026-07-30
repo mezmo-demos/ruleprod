@@ -57,7 +57,10 @@ const ADDRESSES: readonly Omit<ShippingAddress, 'name'>[] = [
 ] as const;
 
 /** Mint a fresh anonymous shopper with a synthetic identity. */
-export function mintSession(rng: Rng = Math.random): ShopperSession {
+export function mintSession(
+  rng: Rng = Math.random,
+  emailDomain = 'loadgen.example',
+): ShopperSession {
   const sessionId = randomUUID();
   const first = pickOne(FIRST_NAMES, rng);
   const last = pickOne(LAST_NAMES, rng);
@@ -67,8 +70,9 @@ export function mintSession(rng: Rng = Math.random): ShopperSession {
     userKey: anonKey(sessionId),
     cookie: `sessionId=${sessionId}`,
     contact: {
-      // .example TLD plus the uuid prefix: unmistakably synthetic, unique enough.
-      email: `${first.toLowerCase()}.${last.toLowerCase()}.${sessionId.slice(0, 8)}@loadgen.example`,
+      // Default domain plus the uuid prefix: unmistakably synthetic, unique
+      // enough. Stealth runs configure a domain that doesn't announce itself.
+      email: `${first.toLowerCase()}.${last.toLowerCase()}.${sessionId.slice(0, 8)}@${emailDomain}`,
       name,
     },
     address: { name, ...pickOne(ADDRESSES, rng) },
