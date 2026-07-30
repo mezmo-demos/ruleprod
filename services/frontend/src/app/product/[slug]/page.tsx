@@ -104,7 +104,12 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
               </div>
               <div className={styles.relatedInfo}>
                 <h3 className={styles.relatedTitle}>{prod.title}</h3>
-                <p className={styles.relatedPrice}>{formatCents(prod.priceCents)}</p>
+                <p className={styles.relatedPrice}>
+                  {formatCents(prod.priceCents)}
+                  {prod.sale && (
+                    <s className={styles.wasPrice}>{formatCents(prod.sale.basePriceCents)}</s>
+                  )}
+                </p>
               </div>
             </Link>
           ))}

@@ -87,14 +87,27 @@ export default async function Home() {
           {bestSellers.map((prod) => (
             <Link key={prod.slug} href={`/product/${prod.slug}`} className={styles.productCard}>
               <div className={styles.productImage}>
-                {prod.badge === 'best_seller' && <span className={styles.productBadge}>Best seller</span>}
-                {prod.badge === 'low_stock' && <span className={`${styles.productBadge} ${styles.productBadgeAccent}`}>Low stock</span>}
+                {prod.sale ? (
+                  <span className={`${styles.productBadge} ${styles.productBadgeAccent}`}>
+                    {Math.round(prod.sale.percentOff)}% off
+                  </span>
+                ) : (
+                  <>
+                    {prod.badge === 'best_seller' && <span className={styles.productBadge}>Best seller</span>}
+                    {prod.badge === 'low_stock' && <span className={`${styles.productBadge} ${styles.productBadgeAccent}`}>Low stock</span>}
+                  </>
+                )}
                 <Image src={resolveImage(prod.image)} alt={prod.title} fill style={{ objectFit: 'cover' }} />
               </div>
               <div>
                 <h3 className={styles.productTitle}>{prod.title}</h3>
                 <p className={styles.productSpec}>{prod.specLine}</p>
-                <p className={styles.productPrice}>{formatCents(prod.priceCents)}</p>
+                <p className={styles.productPrice}>
+                  {formatCents(prod.priceCents)}
+                  {prod.sale && (
+                    <s className={styles.wasPrice}>{formatCents(prod.sale.basePriceCents)}</s>
+                  )}
+                </p>
               </div>
             </Link>
           ))}
