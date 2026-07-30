@@ -27,30 +27,116 @@ export interface Persona {
   name: string;
   role: string;
   email: string;
+  /** Trading name shown on the sign-in card. */
+  company: string;
+  /** One line of flavour for the sign-in picker. */
+  blurb: string;
+  /** Two initials for the avatar chip — no image assets involved. */
+  initials: string;
+  /** The category this persona shops; the picker links straight to it. */
+  homeCategory: CategorySlug;
+  /** Default shipping address, used to prefill checkout and seed order history. */
+  address: ShippingAddress;
 }
 
 export const PERSONAS: readonly Persona[] = [
-  { id: 'ava', name: 'Ava Chen', role: 'Set designer — Studio', email: 'ava@studio41.example' },
+  {
+    id: 'ava',
+    name: 'Ava Chen',
+    role: 'Set designer',
+    email: 'ava@studio41.example',
+    company: 'Studio 41',
+    blurb: 'Buys straightedges by the metre and expects them dead flat.',
+    initials: 'AC',
+    homeCategory: 'studio',
+    address: {
+      name: 'Ava Chen',
+      street1: '41 Kearny Street',
+      street2: 'Studio 3',
+      city: 'San Francisco',
+      state: 'CA',
+      zip: '94108',
+      country: 'US',
+    },
+  },
   {
     id: 'marcus',
     name: 'Marcus Webb',
-    role: 'General contractor — Trades',
+    role: 'General contractor',
     email: 'marcus@webbandsons.example',
+    company: 'Webb & Sons',
+    blurb: 'Replaces tape measures faster than anyone should have to.',
+    initials: 'MW',
+    homeCategory: 'trades',
+    address: {
+      name: 'Marcus Webb',
+      street1: '812 Delancey Avenue',
+      city: 'Philadelphia',
+      state: 'PA',
+      zip: '19147',
+      country: 'US',
+    },
   },
   {
     id: 'priya',
     name: 'Priya Natarajan',
-    role: 'Grade 4 teacher — School',
+    role: 'Grade 4 teacher',
     email: 'priya@maplewood.example',
+    company: 'Maplewood Elementary',
+    blurb: 'Orders for the whole district, always at the 500 tier.',
+    initials: 'PN',
+    homeCategory: 'school',
+    address: {
+      name: 'Priya Natarajan',
+      street1: '1200 Maplewood Drive',
+      street2: 'Attn: Purchasing',
+      city: 'Columbus',
+      state: 'OH',
+      zip: '43215',
+      country: 'US',
+    },
   },
-  { id: 'june', name: 'June Park', role: 'Tailor — Textile', email: 'june@parkalterations.example' },
+  {
+    id: 'june',
+    name: 'June Park',
+    role: 'Tailor',
+    email: 'june@parkalterations.example',
+    company: 'Park Alterations',
+    blurb: 'Runs a two-chair shop and wears out a tape every season.',
+    initials: 'JP',
+    homeCategory: 'textile',
+    address: {
+      name: 'June Park',
+      street1: '77 Bergen Street',
+      city: 'Brooklyn',
+      state: 'NY',
+      zip: '11201',
+      country: 'US',
+    },
+  },
   {
     id: 'walter',
     name: 'Walter Mead',
-    role: 'Slide-rule collector — Vintage',
+    role: 'Slide-rule collector',
     email: 'walter@meadarchive.example',
+    company: 'The Mead Archive',
+    blurb: 'One careful purchase a quarter, always from the vintage case.',
+    initials: 'WM',
+    homeCategory: 'vintage',
+    address: {
+      name: 'Walter Mead',
+      street1: '9 Chestnut Lane',
+      city: 'Concord',
+      state: 'MA',
+      zip: '01742',
+      country: 'US',
+    },
   },
 ] as const;
+
+/** The persona with this id, or undefined — the guard for an untrusted cookie. */
+export const findPersona = (id: string | undefined): Persona | undefined =>
+  id === undefined ? undefined : PERSONAS.find((persona) => persona.id === id);
 
 /** userKey for a signed-in persona. */
 export const personaKey = (id: string): string => `persona:${id}`;
