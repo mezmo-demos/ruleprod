@@ -1,9 +1,9 @@
 name: ci
 
+# PR-only. On main the same checks run as build.yml's `verify` job, where they
+# gate the release PR — a second copy here would just duplicate the run.
 on:
   pull_request:
-  push:
-    branches: [main]
 
 jobs:
   verify:
