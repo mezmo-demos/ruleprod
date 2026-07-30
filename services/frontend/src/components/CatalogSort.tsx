@@ -3,19 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { SortKey } from '@ruleprod/contracts';
 import styles from '@/app/catalog/page.module.css';
-
-const SORT_OPTIONS: ReadonlyArray<{ value: SortKey; label: string }> = [
-  { value: 'popular', label: 'Popular' },
-  { value: 'price_asc', label: 'Price: low to high' },
-  { value: 'price_desc', label: 'Price: high to low' },
-  { value: 'newest', label: 'Newest' },
-  { value: 'name', label: 'Name A–Z' },
-];
-
-export function parseSort(raw: string | string[] | undefined): SortKey {
-  const value = Array.isArray(raw) ? raw[0] : raw;
-  return SORT_OPTIONS.some((option) => option.value === value) ? (value as SortKey) : 'popular';
-}
+import { SORT_OPTIONS } from '@/lib/catalogSort';
 
 interface Props {
   value: SortKey;
