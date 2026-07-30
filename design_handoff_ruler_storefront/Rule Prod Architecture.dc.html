@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="./doc-page.js"></script>
+<style>
+  body { margin: 0; }
+  doc-page:not(:defined) { visibility: hidden; }
+  a { color: #b4491a; }
+  a:hover { color: #8c380f; }
+</style>
+</helmet>
+
+<doc-page margin="0.7in">
+  <div style="font-family:'Archivo',sans-serif;color:#16150f">
+
+    <div style="border-bottom:2px solid #16150f;padding-bottom:14px;margin-bottom:28px">
+      <div style="font:500 10pt/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#b4491a">MEZMO-DEMOS · RULE PROD</div>
+      <h1 style="margin:10px 0 6px;font:700 26pt/1.05 'Archivo',sans-serif;letter-spacing:-.025em">Build &amp; deploy architecture</h1>
+      <div style="font:400 11pt/1.4 'Archivo',sans-serif;color:#57534a">A five-service demo storefront on Kubernetes, delivered by Argo CD from Git.</div>
+    </div>
+
+    <h2 style="margin:0 0 10px;font:700 15pt/1.2 'Archivo',sans-serif;letter-spacing:-.02em">1. One repo, not five</h2>
+    <p style="margin:0 0 12px;font:400 11pt/1.6 'Archivo',sans-serif;color:#2e2b24;orphans:3;widows:3">Use a single application repo, <b>github.com/mezmo-demos/ruler-shop</b>. Five separate repos buy you independent release cadence — which a demo does not need — and cost you a five-way pull request every time a shared contract changes. The one split worth making is app code versus cluster config, because Argo writes to the config repo and you don't want image-tag commits retriggering CI.</p>
+
+    <div style="background:#f7f5f0;border:1px solid #ddd8cc;padding:16px 18px;margin:0 0 20px;break-inside:avoid">
+      <pre style="margin:0;font:400 9.5pt/1.65 'IBM Plex Mono',monospace;color:#2e2b24;white-space:pre-wrap">mezmo-demos/ruler-shop/
+├── services/
+│   ├── frontend/     Dockerfile, src/     Next.js — UI + BFF
+│   ├── catalog/      Dockerfile, src/     products, prices, price breaks
+│   ├── cart/         Dockerfile, src/     active + saved carts
+│   ├── checkout/     Dockerfile, src/     order placement, promo codes
+│   └── orders/       Dockerfile, src/     order history
+├── libs/shared/      logging, tracing, error taxonomy
+├── loadgen/          synthetic shopper traffic
+└── .github/workflows/build.yml
+
+mezmo-demos/ruler-shop-gitops/
+└── services/
+    ├── cart/{deployment,service}.yaml
+    ├── catalog/{deployment,service}.yaml
+    ├── checkout/{deployment,service}.yaml
+    ├── frontend/{deployment,service}.yaml
+    └── orders/{deployment,service}.yaml</pre>
+    </div>
+
+    <h2 style="margin:0 0 10px;font:700 15pt/1.2 'Archivo',sans-serif;letter-spacing:-.02em">2. Images in GHCR, not "in GitHub"</h2>
+    <p style="margin:0 0 12px;font:400 11pt/1.6 'Archivo',sans-serif;color:#2e2b24;orphans:3;widows:3">GitHub's container registry is GHCR. Push to <span style="font-family:'IBM Plex Mono',monospace;font-size:10pt">ghcr.io/mezmo-demos/ruler-shop/&lt;service&gt;:&lt;sha&gt;</span>. It's free for public images, scoped to the org, and authenticates from Actions with the built-in <span style="font-family:'IBM Plex Mono',monospace;font-size:10pt">GITHUB_TOKEN</span> — no external registry credentials to rotate.</p>
+    <p style="margin:0 0 12px;font:400 11pt/1.6 'Archivo',sans-serif;color:#2e2b24;orphans:3;widows:3">Tag by commit SHA, never <span style="font-family:'IBM Plex Mono',monospace;font-size:10pt">:latest</span>. A mutable tag means the cluster and Git disagree about what's running, which is the one thing GitOps exists to prevent — and it makes "when did this regression ship?" unanswerable, which matters for an observability demo.</p>
+
+    <div style="background:#f7f5f0;border:1px solid #ddd8cc;padding:16px 18px;margin:0 0 20px;break-inside:avoid">
+      <div style="font:500 9pt/1 'IBM Plex Mono',monospace;letter-spacing:.12em;color:#b4491a;margin-bottom:11px">.GITHUB/WORKFLOWS/BUILD.YML — SHAPE</div>
+      <pre style="margin:0;font:400 9.5pt/1.65 'IBM Plex Mono',monospace;color:#2e2b24;white-space:pre-wrap">strategy:
+  matrix:
+    service: [frontend, catalog, cart, checkout, orders]
+steps:
+  - detect changed paths (skip unchanged services)
+  - docker buildx build ./services/${{ matrix.service }}
+  - push ghcr.io/mezmo-demos/ruler-shop/${{ matrix.service }}:${{ github.sha }}
+  - yq -i '.spec.template.spec.containers[0].image = "…:${{ github.sha }}"' \
+      ../gitops/services/${{ matrix.service }}/deployment.yaml
+  - commit &amp; push to ruler-shop-gitops</pre>
+    </div>
+
+    <h2 style="margin:0 0 10px;font:700 15pt/1.2 'Archivo',sans-serif;letter-spacing:-.02em">3. Argo picks it up</h2>
+    <p style="margin:0 0 12px;font:400 11pt/1.6 'Archivo',sans-serif;color:#2e2b24;orphans:3;widows:3">Your directory layout works as-is with a single Application using recursive directory sync — Argo applies every YAML under <span style="font-family:'IBM Plex Mono',monospace;font-size:10pt">services/</span>. If you want per-service health, sync status, and rollback in the Argo UI (worth it for a demo you'll be showing on screen), use an ApplicationSet with a git directory generator instead: one child Application per service directory, generated automatically as you add services.</p>
+    <p style="margin:0 0 20px;font:400 11pt/1.6 'Archivo',sans-serif;color:#2e2b24;orphans:3;widows:3">Either way, keep the CI commit as the only thing that changes an image tag. That commit is the deploy record, and it's what you point at when the demo shows a latency spike starting at 14:02.</p>
+
+    <h2 style="margin:0 0 12px;font:700 15pt/1.2 'Archivo',sans-serif;letter-spacing:-.02em">4. Service responsibilities</h2>
+    <table style="width:100%;border-collapse:collapse;margin:0 0 20px;font:400 10pt/1.5 'Archivo',sans-serif">
+      <thead>
+        <tr style="background:#16150f;color:#f7f5f0">
+          <th style="text-align:left;padding:9px 12px;font:500 8.5pt/1 'IBM Plex Mono',monospace;letter-spacing:.1em">SERVICE</th>
+          <th style="text-align:left;padding:9px 12px;font:500 8.5pt/1 'IBM Plex Mono',monospace;letter-spacing:.1em">OWNS</th>
+          <th style="text-align:left;padding:9px 12px;font:500 8.5pt/1 'IBM Plex Mono',monospace;letter-spacing:.1em">STATE</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="break-inside:avoid"><td style="padding:10px 12px;border-bottom:1px solid #ddd8cc;font-weight:600">frontend</td><td style="padding:10px 12px;border-bottom:1px solid #ddd8cc;color:#2e2b24">All six screens; server-renders pages and fans out to the other four. The only service exposed via Ingress.</td><td style="padding:10px 12px;border-bottom:1px solid #ddd8cc;font-family:'IBM Plex Mono',monospace;font-size:9.5pt;color:#57534a">session cookie</td></tr>
+        <tr style="break-inside:avoid"><td style="padding:10px 12px;border-bottom:1px solid #ddd8cc;font-weight:600">catalog</td><td style="padding:10px 12px;border-bottom:1px solid #ddd8cc;color:#2e2b24">Products, categories, facets, search, base price and the quantity price-break ladder. Read-heavy — the natural place to demo cache hit ratio.</td><td style="padding:10px 12px;border-bottom:1px solid #ddd8cc;font-family:'IBM Plex Mono',monospace;font-size:9.5pt;color:#57534a">Postgres + Redis</td></tr>
+        <tr style="break-inside:avoid"><td style="padding:10px 12px;border-bottom:1px solid #ddd8cc;font-weight:600">cart</td><td style="padding:10px 12px;border-bottom:1px solid #ddd8cc;color:#2e2b24">Active cart per session, save-for-later lines, and named saved carts. Applies the break tier by calling catalog for the ladder.</td><td style="padding:10px 12px;border-bottom:1px solid #ddd8cc;font-family:'IBM Plex Mono',monospace;font-size:9.5pt;color:#57534a">Redis + Postgres</td></tr>
+        <tr style="break-inside:avoid"><td style="padding:10px 12px;border-bottom:1px solid #ddd8cc;font-weight:600">checkout</td><td style="padding:10px 12px;border-bottom:1px solid #ddd8cc;color:#2e2b24">Validates the cart, redeems promo codes, computes tax and shipping, writes the order, clears the cart. No card data is ever accepted — the "payment method" is an invoice stub.</td><td style="padding:10px 12px;border-bottom:1px solid #ddd8cc;font-family:'IBM Plex Mono',monospace;font-size:9.5pt;color:#57534a">stateless</td></tr>
+        <tr style="break-inside:avoid"><td style="padding:10px 12px;border-bottom:1px solid #ddd8cc;font-weight:600">orders</td><td style="padding:10px 12px;border-bottom:1px solid #ddd8cc;color:#2e2b24">Order records, status transitions, history for the account page, and "buy again".</td><td style="padding:10px 12px;border-bottom:1px solid #ddd8cc;font-family:'IBM Plex Mono',monospace;font-size:9.5pt;color:#57534a">Postgres</td></tr>
+      </tbody>
+    </table>
+
+    <div style="background:#fbf1ea;border:1px solid #b4491a;padding:16px 18px;margin:0 0 20px;break-inside:avoid">
+      <div style="font:600 11pt/1.3 'Archivo',sans-serif;color:#b4491a;margin-bottom:7px">Checkout is the interesting service</div>
+      <div style="font:400 10.5pt/1.6 'Archivo',sans-serif;color:#2e2b24">It's the only one that touches three others in a single request, so it's where a demo actually gets to show a distributed trace worth looking at: frontend → checkout → cart → catalog → orders. Give it a deliberate failure surface — promo code expired, inventory drift between cart and catalog, orders write timeout — and every one of those becomes a legible incident with a real root cause.</div>
+    </div>
+
+    <h2 style="margin:0 0 10px;font:700 15pt/1.2 'Archivo',sans-serif;letter-spacing:-.02em">5. Two things to settle early</h2>
+    <p style="margin:0 0 12px;font:400 11pt/1.6 'Archivo',sans-serif;color:#2e2b24;orphans:3;widows:3"><b>Identity.</b> Guest checkout plus optional accounts means every service needs to key off something that survives a guest becoming a user. Issue an anonymous session id at first request; on account creation, re-key the cart and back-fill the order. Do this in <span style="font-family:'IBM Plex Mono',monospace;font-size:10pt">cart</span> and <span style="font-family:'IBM Plex Mono',monospace;font-size:10pt">orders</span> from day one — retrofitting it is miserable.</p>
+    <p style="margin:0 0 12px;font:400 11pt/1.6 'Archivo',sans-serif;color:#2e2b24;orphans:3;widows:3"><b>Where price is computed.</b> One service owns pricing arithmetic, and it should be <span style="font-family:'IBM Plex Mono',monospace;font-size:10pt">catalog</span> for unit price and breaks, <span style="font-family:'IBM Plex Mono',monospace;font-size:10pt">checkout</span> for order-level promos and tax. If cart also does the maths you get three implementations of the same rounding rule and a $0.01 discrepancy nobody can find.</p>
+
+    <h2 style="margin:0 0 10px;font:700 15pt/1.2 'Archivo',sans-serif;letter-spacing:-.02em">6. Product photography</h2>
+    <p style="margin:0 0 10px;font:400 11pt/1.6 'Archivo',sans-serif;color:#2e2b24;orphans:3;widows:3">Every image slot in the designs is a labelled placeholder. Rulers are unusually well served by free stock — search "ruler", "tape measure", "carpenter square", "slide rule", "drafting tools" on:</p>
+    <ul style="margin:0 0 12px;padding-left:20px;font:400 11pt/1.7 'Archivo',sans-serif;color:#2e2b24">
+      <li><b>Unsplash</b> and <b>Pexels</b> — best for the wide hero flat-lays; strong on workbench and drafting-desk scenes.</li>
+      <li><b>Rijksmuseum</b> and <b>Smithsonian Open Access</b> — public-domain scans of antique boxwood rules and slide rules, ideal for the vintage archive and unbeatable for the editorial direction.</li>
+      <li><b>Pixabay</b> — the deepest well of plain white-background product cutouts for grid cards.</li>
+    </ul>
+    <p style="margin:0 0 0;font:400 11pt/1.6 'Archivo',sans-serif;color:#2e2b24;orphans:3;widows:3">For a demo, consistency beats variety: shoot or pick everything on the same neutral background and one shadow direction, and the catalogue grid will read as a real store even with twelve products.</p>
+
+  </div>
+</doc-page>
+
+</x-dc>
+</body>
+</html>
