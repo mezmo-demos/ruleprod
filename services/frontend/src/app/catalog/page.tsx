@@ -4,7 +4,8 @@ import styles from "./page.module.css";
 import { getProducts, getCategories } from "@/lib/catalog";
 import { resolveImage, formatCents } from "@/lib/utils";
 import FilterSidebar from "@/components/FilterSidebar";
-import CatalogSort, { parseSort } from "@/components/CatalogSort";
+import CatalogSort from "@/components/CatalogSort";
+import { parseSort } from "@/lib/catalogSort";
 import { ChevronRight, MoreHorizontal } from "lucide-react";
 
 /**
