@@ -183,7 +183,10 @@ interface WhereBuild {
  * `values.length + 1`. `exclude` drops one dimension (facet self-exclusion).
  */
 export function buildWhere(params: ListParams, exclude?: FacetDimension): WhereBuild {
-  const clauses: string[] = [];
+  // Unlisted items exist only for those who know the slug: no listing, no
+  // search hits, no facet counts. There is deliberately no query param to
+  // lift this.
+  const clauses: string[] = ['NOT p.hidden'];
   const values: unknown[] = [];
   const next = () => `$${values.length + 1}`;
 

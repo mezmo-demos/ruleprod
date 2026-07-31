@@ -44,6 +44,9 @@ CREATE TABLE IF NOT EXISTS catalog.products (
 CREATE INDEX IF NOT EXISTS products_category_idx ON catalog.products (category);
 CREATE INDEX IF NOT EXISTS products_popularity_idx ON catalog.products (popularity DESC);
 
+-- Unlisted items: reachable by slug/sku, absent from listings, search and facets.
+ALTER TABLE catalog.products ADD COLUMN IF NOT EXISTS hidden boolean NOT NULL DEFAULT false;
+
 CREATE TABLE IF NOT EXISTS catalog.variants (
   sku           text PRIMARY KEY,
   product_slug  text NOT NULL REFERENCES catalog.products(slug) ON DELETE CASCADE,
@@ -102,8 +105,8 @@ async function seed(client: PoolClient): Promise<void> {
       `INSERT INTO catalog.products
          (slug, category, title, spec_line, description, material, graduation,
           finish, thickness, tolerance, made_in, images, badge, popularity,
-          rating_average, rating_count, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+          rating_average, rating_count, created_at, hidden)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
        ON CONFLICT (slug) DO UPDATE SET
          category = EXCLUDED.category, title = EXCLUDED.title,
          spec_line = EXCLUDED.spec_line, description = EXCLUDED.description,
@@ -112,7 +115,8 @@ async function seed(client: PoolClient): Promise<void> {
          tolerance = EXCLUDED.tolerance, made_in = EXCLUDED.made_in,
          images = EXCLUDED.images, badge = EXCLUDED.badge,
          popularity = EXCLUDED.popularity, rating_average = EXCLUDED.rating_average,
-         rating_count = EXCLUDED.rating_count, created_at = EXCLUDED.created_at`,
+         rating_count = EXCLUDED.rating_count, created_at = EXCLUDED.created_at,
+         hidden = EXCLUDED.hidden`,
       [
         product.slug,
         product.category,
@@ -131,6 +135,7 @@ async function seed(client: PoolClient): Promise<void> {
         product.ratingAverage,
         product.ratingCount,
         product.createdAt,
+        product.hidden ?? false,
       ],
     );
 
