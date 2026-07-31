@@ -98,6 +98,25 @@
   outline-offset: 2px;
 }
 
+.inputFieldInvalid {
+  border-color: var(--danger);
+  background-color: var(--danger-bg);
+}
+
+.inputFieldInvalid:focus {
+  outline-color: var(--danger);
+}
+
+.fieldError {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--danger);
+}
+
+.requiredMark {
+  color: var(--danger);
+}
+
 .checkboxRow {
   display: flex;
   align-items: flex-start;
@@ -415,6 +434,11 @@
   font-weight: 700;
   text-align: center;
   margin-bottom: 16px;
+}
+
+.placeOrderBtn:disabled {
+  background-color: var(--disabled);
+  cursor: default;
 }
 
 .summaryDisclaimer {

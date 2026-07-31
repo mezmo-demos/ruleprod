@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { CheckoutQuote, PlaceOrderRequest, DeliveryMethod, PaymentMethod } from '@ruleprod/contracts';
 import { formatCents, resolveImage } from '@/lib/utils';
 import { placeOrderAction } from '@/app/actions';
@@ -24,6 +24,18 @@ interface Props {
   initialQuote: CheckoutQuote;
   defaults: CheckoutDefaults;
 }
+
+/** The required inputs, in DOM order — validation focuses the first offender. */
+const FIELD_ORDER = [
+  'email',
+  'firstName',
+  'lastName',
+  'streetAddress',
+  'city',
+  'state',
+  'zip',
+] as const;
+type FieldKey = (typeof FIELD_ORDER)[number];
 
 export default function CheckoutForm({ initialQuote, defaults }: Props) {
   const router = useRouter();
@@ -53,11 +65,58 @@ export default function CheckoutForm({ initialQuote, defaults }: Props) {
     router.replace(`?${params.toString()}`);
   };
 
-  const isFormValid = [email, firstName, lastName, streetAddress, city, state, zip]
-    .every((field) => field.trim() !== '');
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<FieldKey, string>>>({});
+  const fieldRefs = useRef<Partial<Record<FieldKey, HTMLInputElement | null>>>({});
+
+  const validate = (): Partial<Record<FieldKey, string>> => {
+    const errors: Partial<Record<FieldKey, string>> = {};
+    if (email.trim() === '') errors.email = 'Enter an email address.';
+    else if (!/^\S+@\S+\.\S+$/.test(email.trim())) errors.email = 'That email address does not look right.';
+    if (firstName.trim() === '') errors.firstName = 'Enter a first name.';
+    if (lastName.trim() === '') errors.lastName = 'Enter a last name.';
+    if (streetAddress.trim() === '') errors.streetAddress = 'Enter a street address.';
+    if (city.trim() === '') errors.city = 'Enter a city.';
+    if (state.trim() === '') errors.state = 'Enter a state.';
+    if (zip.trim() === '') errors.zip = 'Enter a ZIP code.';
+    return errors;
+  };
+
+  /** Typing in a field retires its error immediately. */
+  const clearFieldError = (key: FieldKey) =>
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+
+  const inputProps = (key: FieldKey) => ({
+    className: `${styles.inputField} ${fieldErrors[key] ? styles.inputFieldInvalid : ''}`,
+    'aria-invalid': fieldErrors[key] ? true : undefined,
+    'aria-describedby': fieldErrors[key] ? `checkout-error-${key}` : undefined,
+    ref: (el: HTMLInputElement | null) => {
+      fieldRefs.current[key] = el;
+    },
+  });
+
+  const fieldError = (key: FieldKey) =>
+    fieldErrors[key] ? (
+      <p id={`checkout-error-${key}`} className={styles.fieldError}>
+        {fieldErrors[key]}
+      </p>
+    ) : null;
+
+  const requiredMark = <span className={styles.requiredMark} aria-hidden="true">*</span>;
 
   const handlePlaceOrder = async () => {
-    if (!isFormValid) return;
+    const errors = validate();
+    setFieldErrors(errors);
+    const firstInvalid = FIELD_ORDER.find((key) => errors[key] !== undefined);
+    if (firstInvalid) {
+      setError('Some required details are missing — fill in the highlighted fields.');
+      fieldRefs.current[firstInvalid]?.focus();
+      return;
+    }
 
     setIsAdding(true);
     setError(null);
@@ -101,14 +160,15 @@ export default function CheckoutForm({ initialQuote, defaults }: Props) {
           </div>
           <div className={styles.cardBody}>
             <div className={styles.fieldGroup}>
-              <label className={styles.label}>Email</label>
-              <input 
+              <label className={styles.label}>Email {requiredMark}</label>
+              <input
                 type="email"
-                className={styles.inputField}
                 placeholder="you@example.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => { setEmail(e.target.value); clearFieldError('email'); }}
+                {...inputProps('email')}
               />
+              {fieldError('email')}
             </div>
           </div>
         </div>
@@ -122,66 +182,72 @@ export default function CheckoutForm({ initialQuote, defaults }: Props) {
           <div className={styles.cardBody}>
             <div className={styles.grid2Col}>
               <div className={styles.fieldGroup}>
-                <label className={styles.label}>First name</label>
-                <input 
+                <label className={styles.label}>First name {requiredMark}</label>
+                <input
                   type="text"
-                  className={styles.inputField}
                   placeholder="First name"
                   value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
+                  onChange={(e) => { setFirstName(e.target.value); clearFieldError('firstName'); }}
+                  {...inputProps('firstName')}
                 />
+                {fieldError('firstName')}
               </div>
               <div className={styles.fieldGroup}>
-                <label className={styles.label}>Last name</label>
-                <input 
+                <label className={styles.label}>Last name {requiredMark}</label>
+                <input
                   type="text"
-                  className={styles.inputField}
                   placeholder="Last name"
                   value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
+                  onChange={(e) => { setLastName(e.target.value); clearFieldError('lastName'); }}
+                  {...inputProps('lastName')}
                 />
+                {fieldError('lastName')}
               </div>
               <div className={styles.fieldGroupSpan2}>
-                <label className={styles.label}>Street address</label>
+                <label className={styles.label}>Street address {requiredMark}</label>
                 <input
                   type="text"
-                  className={styles.inputField}
                   placeholder="Street and unit"
                   value={streetAddress}
-                  onChange={(e) => setStreetAddress(e.target.value)}
+                  onChange={(e) => { setStreetAddress(e.target.value); clearFieldError('streetAddress'); }}
+                  {...inputProps('streetAddress')}
                 />
+                {fieldError('streetAddress')}
               </div>
               <div className={styles.fieldGroupSpan2}>
-                <label className={styles.label}>City</label>
+                <label className={styles.label}>City {requiredMark}</label>
                 <input
                   type="text"
-                  className={styles.inputField}
                   placeholder="City"
                   value={city}
-                  onChange={(e) => setCity(e.target.value)}
+                  onChange={(e) => { setCity(e.target.value); clearFieldError('city'); }}
+                  {...inputProps('city')}
                 />
+                {fieldError('city')}
               </div>
               <div className={styles.fieldGroup}>
-                <label className={styles.label}>State</label>
+                <label className={styles.label}>State {requiredMark}</label>
                 <input
                   type="text"
-                  className={styles.inputField}
                   placeholder="State"
                   maxLength={2}
                   value={state}
-                  onChange={(e) => setState(e.target.value)}
+                  onChange={(e) => { setState(e.target.value); clearFieldError('state'); }}
+                  {...inputProps('state')}
                 />
+                {fieldError('state')}
               </div>
               <div className={styles.fieldGroup}>
-                <label className={styles.label}>ZIP</label>
+                <label className={styles.label}>ZIP {requiredMark}</label>
                 <input
                   type="text"
                   inputMode="numeric"
-                  className={styles.inputField}
                   placeholder="ZIP"
                   value={zip}
-                  onChange={(e) => setZip(e.target.value)}
+                  onChange={(e) => { setZip(e.target.value); clearFieldError('zip'); }}
+                  {...inputProps('zip')}
                 />
+                {fieldError('zip')}
               </div>
             </div>
           </div>
@@ -323,7 +389,7 @@ export default function CheckoutForm({ initialQuote, defaults }: Props) {
 
           {error && <p className={styles.orderError} role="alert">{error}</p>}
 
-          <button className={styles.placeOrderBtn} onClick={handlePlaceOrder} disabled={!isFormValid || isSubmitting}>
+          <button className={styles.placeOrderBtn} onClick={handlePlaceOrder} disabled={isSubmitting}>
             {isSubmitting ? 'Placing order...' : 'Place order'}
           </button>
           
