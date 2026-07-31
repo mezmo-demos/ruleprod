@@ -32,6 +32,9 @@ export function resolveImage(key: string | undefined): string {
     'prod-slide-rule': '/images/img-15.jpg',
     'prod-wooden-ruler': '/images/img-16.jpg',
     'editorial-workbench': '/images/img-17.jpg',
+    'prod-cattle-prod': '/images/img-18.jpg',
+    'sticker-rural-prod': '/images/img-19.png',
+    'sticker-support-local': '/images/img-20.png',
   };
   return key ? map[key] || '/images/img-12.jpg' : '/images/img-12.jpg';
 }
