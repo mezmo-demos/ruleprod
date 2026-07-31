@@ -94,6 +94,12 @@ rule, SKU `RP-SR-6R4`, $34.00, variants 6/12/18/24 in (12 in `RP-SR-12R4` $42.00
 rating 4.8 / 214, badge `best_seller`. One vintage item with stock 3 and badge
 `low_stock` ("1 of 3 left" is rendered from stock). v1 never mutates stock.
 
+Products may be `hidden`: unlisted items that never appear in listings, search
+results, facet counts or related products, but still resolve by slug and sku —
+so cart, quote and checkout treat them like any other product. There is no
+query param to reveal them; the frontend's unlinked `/rural-prod` page is the
+only way in.
+
 ## cart
 
 Cart keyed by `userKey` (`:key` below). Every mutation returns the full priced
@@ -178,4 +184,5 @@ monospace label. Canonical keys — catalog must use only these:
 `prod-steel-rule`, `prod-steel-rule-alt`, `prod-folding-rule`,
 `prod-framing-square`, `prod-tape-measure`, `prod-tailor-tape`,
 `prod-school-ruler`, `prod-drafting-triangle`, `prod-architect-scale`,
-`prod-slide-rule`, `prod-wooden-ruler`, `editorial-workbench`.
+`prod-slide-rule`, `prod-wooden-ruler`, `editorial-workbench`,
+`prod-cattle-prod`, `sticker-rural-prod`, `sticker-support-local`.

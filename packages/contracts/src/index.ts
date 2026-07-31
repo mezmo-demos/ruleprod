@@ -193,6 +193,9 @@ export const IMAGE_KEYS = [
   'prod-slide-rule',
   'prod-wooden-ruler',
   'editorial-workbench',
+  'prod-cattle-prod',
+  'sticker-rural-prod',
+  'sticker-support-local',
 ] as const;
 export type ImageKey = (typeof IMAGE_KEYS)[number];
 

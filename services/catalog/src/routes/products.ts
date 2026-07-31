@@ -250,7 +250,7 @@ export function registerProductRoutes(app: FastifyInstance, pool: Pool): void {
 
     const related = await pool.query<CardRow>(
       `${CARD_SELECT}
-       WHERE p.category = $1 AND p.slug <> $2
+       WHERE p.category = $1 AND p.slug <> $2 AND NOT p.hidden
        ORDER BY p.popularity DESC, p.slug ASC
        LIMIT 4`,
       [row.category, slug],

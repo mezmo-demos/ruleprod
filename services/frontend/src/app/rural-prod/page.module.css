@@ -1,0 +1,152 @@
+.main {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+.banner {
+  background-color: var(--accent-soft);
+  border-radius: var(--radius-hero);
+  margin: 32px 44px 0;
+  padding: 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 20px;
+}
+
+.banner p {
+  max-width: 640px;
+}
+
+.eyebrow {
+  color: var(--accent);
+  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.hashtags {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 22px;
+  padding: 52px 44px 20px;
+}
+
+.card {
+  background-color: var(--surface);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform 150ms ease-out;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+}
+
+.media {
+  aspect-ratio: 16 / 10;
+  background-color: #e9ebf1;
+  position: relative;
+  overflow: hidden;
+}
+
+.mediaSplit {
+  aspect-ratio: 16 / 10;
+  background-color: #e9ebf1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 20px;
+}
+
+.mediaHalf {
+  position: relative;
+}
+
+.cardBody {
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+}
+
+.cardTitle {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.cardSpec {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.cardCopy {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink-body);
+}
+
+.priceRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+.price {
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.bulkChip {
+  background-color: var(--accent-soft);
+  color: var(--accent);
+  border-radius: var(--radius-full);
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.cta {
+  color: var(--accent);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.footnote {
+  text-align: center;
+  font-size: 14px;
+  color: var(--muted-light);
+  padding: 0 44px 52px;
+}
+
+@media (max-width: 1023px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  .banner {
+    margin: 20px 20px 0;
+    padding: 44px 28px;
+  }
+}
+
+@media (max-width: 767px) {
+  .grid {
+    padding: 32px 20px 16px;
+  }
+}

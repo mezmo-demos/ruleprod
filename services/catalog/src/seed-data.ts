@@ -71,6 +71,8 @@ export interface SeedProduct {
   /** First variant is the default. */
   variants: SeedVariant[];
   sales?: SeedSale[];
+  /** Unlisted: reachable by slug/sku only — never in listings, search or facets. */
+  hidden?: boolean;
 }
 
 export const SEED_CATEGORIES: SeedCategory[] = [
@@ -1551,5 +1553,97 @@ export const SEED_PRODUCTS: SeedProduct[] = [
         tiers: [],
       },
     ],
+  },
+
+  // ------------------------------------------------- unlisted (/rural-prod)
+  // The back-paddock items. Hidden from every listing surface; the only way
+  // in is the frontend's /rural-prod route.
+  {
+    slug: 'rural-prod-sticker-pack',
+    category: 'trades',
+    title: 'Rural Prod sticker pack',
+    specLine: 'Vinyl · 25 + 25 · weatherproof matte',
+    description:
+      'Fifty die-cut vinyl stickers, sold as one bundle: twenty-five of the #rural-prod barn crest and twenty-five of the Support Local badge. Printed on 3.5-mil vinyl under a weatherproof matte laminate that shrugs off pressure washers, diesel spills and a prairie winter, because a sticker that peels off the grain bin by spring is just litter with extra steps. Toolbox lids, stock trailers, laptop shells, the co-op notice board — anywhere a hashtag needs to hold its zero. You found this page; you have clearly earned the right to tell people about it quietly.',
+    material: 'Plastic',
+    graduation: 'Dual',
+    finish: 'Weatherproof matte laminate',
+    thickness: '3.5 mil',
+    tolerance: 'Die-cut ±1/32 in',
+    madeIn: 'USA',
+    images: ['sticker-rural-prod', 'sticker-support-local'],
+    popularity: 120,
+    createdAt: '2026-07-25T00:00:00Z',
+    ratingAverage: 4.9,
+    ratingCount: 41,
+    reviews: [
+      {
+        headline: 'Survived the pressure washer',
+        body: 'One on the stock trailer, one on the skid steer, one on my thermos. Eight months of weather between them and the matte finish still looks fresh off the roll.',
+        author: 'Denny F.',
+        verified: true,
+      },
+      {
+        headline: 'The 4-H kids cleaned me out',
+        body: 'Left a pack open on the co-op counter as a joke. Gone by Thursday. Ordering at the ten-pack price and hiding a sleeve for myself this time.',
+        author: 'J. Whitfield',
+        verified: true,
+      },
+    ],
+    variants: [
+      {
+        sku: 'RP-RS-50',
+        label: 'Pack of 50',
+        length: '6 in',
+        priceCents: 2400,
+        stock: 340,
+        tiers: [{ minQty: 10, unitPriceCents: 2160 }],
+      },
+    ],
+    hidden: true,
+  },
+  {
+    slug: 'cattle-prod-36',
+    category: 'trades',
+    title: 'The cattle prod',
+    specLine: 'Fibreglass · 36 in · #cattle-not-pets',
+    description:
+      'The item the hashtag was always about. A genuine ranch-duty stock prod on a 36-inch fibreglass shaft with a rubber overmoulded grip and a weather-sealed switch, built to move a twelve-hundred-pound animal that has decided the gate is a suggestion. In twenty years of selling instruments that measure, this is our first that motivates — and we hold it to the same standard: the shaft is dead straight, it is exactly thirty-six inches, and it arrives with the switch guard on. Treat your herd like cattle, your servers like cattle, and this page like the well-kept secret it is.',
+    material: 'Fibreglass',
+    graduation: 'Imperial',
+    finish: 'Safety orange, rubber overmould grip',
+    thickness: '7/8 in shaft',
+    tolerance: '±0 excuses at the gate',
+    madeIn: 'USA',
+    images: ['prod-cattle-prod'],
+    popularity: 140,
+    createdAt: '2026-07-25T00:00:00Z',
+    ratingAverage: 4.8,
+    ratingCount: 27,
+    reviews: [
+      {
+        headline: 'Moves cattle. Ends meetings.',
+        body: 'Bought it for the paddock. It has since attended two budget reviews as a visual aid. Effective in both settings, and nobody has run long since.',
+        author: 'Ray T.',
+        verified: true,
+      },
+      {
+        headline: 'Checked it against my bench rule',
+        body: 'Thirty-six inches on the nose and straighter than my drywall square. The cows do not appreciate the tolerance work. I do.',
+        author: 'Marcus W.',
+        verified: true,
+      },
+    ],
+    variants: [
+      {
+        sku: 'RP-CP-36',
+        label: '36 in',
+        length: '36 in',
+        priceCents: 8900,
+        stock: 48,
+        tiers: [{ minQty: 10, unitPriceCents: 8010 }],
+      },
+    ],
+    hidden: true,
   },
 ];
