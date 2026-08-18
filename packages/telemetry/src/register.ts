@@ -11,5 +11,5 @@ process.env.OTEL_NODE_DISABLED_INSTRUMENTATIONS ??= 'fs,dns,net';
 process.env.OTEL_NODE_RESOURCE_DETECTORS ??= 'env,host,os,process';
 
 if (process.env.OTEL_SDK_DISABLED !== 'true') {
-  await import('@opentelemetry/auto-instrumentations-node/register');
+  await import('./sdk.js');
 }
