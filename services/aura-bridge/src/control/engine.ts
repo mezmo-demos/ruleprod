@@ -91,16 +91,24 @@ export class InvestigationEngine {
   }
 
   /** Slack button click (or admin/TUI). Returns text describing what happened, for the message update. */
-  async handleApprovalAction(opts: { decisionId: string; userId: string; approved: boolean }): Promise<string> {
+  async handleApprovalAction(opts: {
+    decisionId: string;
+    userId: string;
+    userName?: string;
+    approved: boolean;
+  }): Promise<string> {
     const pending = this.pendingApprovals.get(opts.decisionId);
     const incident = pending ? this.deps.store.getIncident(pending.incidentId) : undefined;
     if (!authorizeApprover(opts.userId, incident)) {
       return 'You are not authorized to approve AURA actions for this incident.';
     }
+    // The reason lands in aura's transcript/logs — a handle reads better than
+    // a raw Slack id.
+    const approver = opts.userName ? `@${opts.userName} (${opts.userId})` : opts.userId;
     const resolved = await this.deps.connector().resolveApproval(
       opts.decisionId,
       opts.approved,
-      opts.approved ? undefined : `denied by ${opts.userId}`,
+      opts.approved ? undefined : `denied by ${approver}`,
     );
     if (!resolved) return 'This approval already expired or was resolved.';
     if (pending) {
