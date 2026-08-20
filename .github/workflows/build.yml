@@ -80,6 +80,8 @@ jobs:
               - 'services/orders/**'
             loadgen:
               - 'services/loadgen/**'
+            aura-bridge:
+              - 'services/aura-bridge/**'
       - name: Resolve service list
         id: list
         env:
@@ -87,7 +89,7 @@ jobs:
           REQUESTED: ${{ inputs.services }}
           SHARED_CHANGED: ${{ steps.filter.outputs.shared }}
         run: |
-          all=(frontend catalog cart checkout orders loadgen)
+          all=(frontend catalog cart checkout orders loadgen aura-bridge)
           if [ "$EVENT" = "workflow_dispatch" ]; then
             if [ "$REQUESTED" = "all" ]; then svcs=("${all[@]}"); else read -ra svcs <<< "$REQUESTED"; fi
           elif [ "$SHARED_CHANGED" = "true" ]; then
@@ -99,6 +101,7 @@ jobs:
             [ "${{ steps.filter.outputs.cart }}" = "true" ] && svcs+=(cart)
             [ "${{ steps.filter.outputs.checkout }}" = "true" ] && svcs+=(checkout)
             [ "${{ steps.filter.outputs.orders }}" = "true" ] && svcs+=(orders)
+            [ "${{ steps.filter.outputs['aura-bridge'] }}" = "true" ] && svcs+=(aura-bridge)
             [ "${{ steps.filter.outputs.loadgen }}" = "true" ] && svcs+=(loadgen)
           fi
           echo "services=$(jq -nc '$ARGS.positional' --args "${svcs[@]}")" >> "$GITHUB_OUTPUT"
