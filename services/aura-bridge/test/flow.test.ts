@@ -27,6 +27,9 @@ describe('InvestigationEngine', () => {
     const { store, slack, engine } = setup();
     await engine.handlePdIncident({ incidentId: 'P1', channelId: 'C1', title: 'cart is down' });
 
+    // PD created the channel; the bot must join before posting.
+    expect(slack.joined).toContain('C1');
+
     const investigating = slack.posts[0];
     expect(investigating?.text).toContain('investigating');
     expect(slack.updates.length).toBeGreaterThan(0); // live status edits

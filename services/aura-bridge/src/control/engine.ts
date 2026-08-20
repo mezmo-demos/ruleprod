@@ -60,6 +60,9 @@ export class InvestigationEngine {
         throw new Error('need channelId or incidentNumber to locate the incident channel');
       }
       channelId = await this.resolveIncidentChannel(opts.incidentNumber);
+    } else {
+      // PD's workflow created this channel moments ago — the bot isn't in it.
+      await this.joinQuietly(channelId);
     }
     const incident = this.deps.store.upsertIncident({
       id: opts.incidentId,
@@ -124,18 +127,22 @@ export class InvestigationEngine {
     };
   }
 
+  private async joinQuietly(channelId: string): Promise<void> {
+    try {
+      await this.deps.slack.joinChannel(channelId);
+    } catch (err) {
+      // already_in_channel and friends — posting will surface real failures.
+      this.deps.logger.info({ err, channelId }, 'joinChannel failed, continuing');
+    }
+  }
+
   private async resolveIncidentChannel(incidentNumber: number): Promise<string> {
     const name = this.deps.channelNamePattern.replace('{number}', String(incidentNumber));
     const { attempts, delayMs } = this.deps.channelResolve;
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
       const channelId = await this.deps.slack.findChannelId(name);
       if (channelId) {
-        try {
-          await this.deps.slack.joinChannel(channelId);
-        } catch (err) {
-          // already_in_channel and friends — posting will surface real failures.
-          this.deps.logger.info({ err, channelId }, 'joinChannel failed, continuing');
-        }
+        await this.joinQuietly(channelId);
         return channelId;
       }
       this.deps.logger.info({ name, attempt }, 'incident channel not found yet, retrying');
