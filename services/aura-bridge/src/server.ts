@@ -7,6 +7,7 @@ export interface ServerDeps {
   loggerInstance: FastifyBaseLogger;
   engine: InvestigationEngine;
   pdWebhookSecret?: string;
+  pdWebhookToken?: string;
   admin: Omit<AdminDeps, 'engine'>;
 }
 
@@ -40,7 +41,11 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   // Stateless: ready as soon as we're serving.
   app.get('/readyz', async () => ({ status: 'ready' }));
 
-  registerPagerDutyTrigger(app, { engine: deps.engine, secret: deps.pdWebhookSecret });
+  registerPagerDutyTrigger(app, {
+    engine: deps.engine,
+    secret: deps.pdWebhookSecret,
+    sharedToken: deps.pdWebhookToken,
+  });
   registerAdminRoutes(app, { engine: deps.engine, ...deps.admin });
 
   return app;

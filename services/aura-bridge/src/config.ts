@@ -9,8 +9,12 @@ export interface BridgeConfig {
   slackMode: 'real' | 'console';
   slackBotToken?: string;
   slackAppToken?: string;
-  /** Unset = accept unsigned PagerDuty webhooks (local dev only). */
+  /** v3 webhook subscription HMAC secret (X-PagerDuty-Signature). */
   pdWebhookSecret?: string;
+  /** Shared token for workflow-sent webhooks (X-Bridge-Token). With neither
+   * this nor pdWebhookSecret set, webhooks are accepted unauthenticated
+   * (local dev only). */
+  pdWebhookToken?: string;
   /** Unset = state is not persisted across restarts. */
   stateFile?: string;
   /** Min ms between edits of the "investigating" status message. */
@@ -35,6 +39,7 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env): BridgeConfi
     slackBotToken: env.SLACK_BOT_TOKEN,
     slackAppToken: env.SLACK_APP_TOKEN,
     pdWebhookSecret: env.PD_WEBHOOK_SECRET,
+    pdWebhookToken: env.PD_WEBHOOK_TOKEN,
     stateFile: env.STATE_FILE,
     statusUpdateIntervalMs: Number(env.STATUS_UPDATE_INTERVAL_MS ?? 2000),
     simStepMs: Number(env.SIM_STEP_MS ?? 1500),

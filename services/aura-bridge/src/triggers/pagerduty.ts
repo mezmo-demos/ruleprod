@@ -1,7 +1,9 @@
-// PagerDuty v3 webhook trigger. Signature: X-PagerDuty-Signature carries
-// comma-separated "v1=<hex hmac-sha256 of raw body>" entries; any match wins
-// (PD sends multiples during secret rotation). No secret configured = accept
-// unsigned (local dev only — production always sets PD_WEBHOOK_SECRET).
+// PagerDuty webhook trigger. Two auth modes, either passes:
+// - workflow "Send a Webhook POST": X-Bridge-Token shared token (TF-minted,
+//   SM ruleprod/pagerduty/webhook) — the production path.
+// - v3 webhook subscription: X-PagerDuty-Signature, comma-separated
+//   "v1=<hex hmac-sha256 of raw body>" entries, any match wins (rotation).
+// Neither configured = accept unauthenticated (local dev only).
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import type { InvestigationEngine } from '../control/engine.js';
@@ -31,16 +33,23 @@ interface PdWebhookBody {
       title?: string;
     };
   };
-  // Flat shape used by admin/TUI injection.
+  // Flat shape used by admin/TUI injection and the workflow webhook body.
   incidentId?: string;
-  incidentNumber?: number;
+  incidentNumber?: number | string;
   channelId?: string;
   title?: string;
 }
 
+export function equalToken(candidate: string | undefined, expected: string): boolean {
+  if (!candidate) return false;
+  const a = Buffer.from(candidate, 'utf8');
+  const b = Buffer.from(expected, 'utf8');
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
 export function registerPagerDutyTrigger(
   app: FastifyInstance,
-  opts: { engine: InvestigationEngine; secret?: string },
+  opts: { engine: InvestigationEngine; secret?: string; sharedToken?: string },
 ): void {
   // Scoped plugin: this route needs the raw body for signature verification.
   void app.register(async (scope) => {
@@ -50,9 +59,16 @@ export function registerPagerDutyTrigger(
 
     scope.post('/webhooks/pagerduty', async (request, reply) => {
       const rawBody = request.body as Buffer;
-      if (opts.secret) {
-        const header = request.headers['x-pagerduty-signature'];
-        if (!verifyPdSignature(rawBody, typeof header === 'string' ? header : undefined, opts.secret)) {
+      if (opts.secret || opts.sharedToken) {
+        const tokenHeader = request.headers['x-bridge-token'];
+        const sigHeader = request.headers['x-pagerduty-signature'];
+        const tokenOk =
+          opts.sharedToken !== undefined &&
+          equalToken(typeof tokenHeader === 'string' ? tokenHeader : undefined, opts.sharedToken);
+        const sigOk =
+          opts.secret !== undefined &&
+          verifyPdSignature(rawBody, typeof sigHeader === 'string' ? sigHeader : undefined, opts.secret);
+        if (!tokenOk && !sigOk) {
           return reply.status(401).send({ error: { code: 'invalid_request', message: 'bad signature' } });
         }
       }
@@ -72,7 +88,12 @@ export function registerPagerDutyTrigger(
       }
 
       const incidentId = body.event?.data?.id ?? body.incidentId;
-      const incidentNumber = body.event?.data?.number ?? body.incidentNumber;
+      // Workflow webhook bodies template numbers as strings — coerce.
+      const rawNumber = body.event?.data?.number ?? body.incidentNumber;
+      const incidentNumber =
+        rawNumber === undefined || rawNumber === null || Number.isNaN(Number(rawNumber))
+          ? undefined
+          : Number(rawNumber);
       const channelId = body.channelId;
       const title = body.event?.data?.title ?? body.title;
       if (!incidentId || (!channelId && incidentNumber === undefined)) {

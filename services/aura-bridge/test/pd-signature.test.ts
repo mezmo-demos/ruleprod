@@ -1,6 +1,6 @@
 import { createHmac } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { verifyPdSignature } from '../src/triggers/pagerduty.js';
+import { equalToken, verifyPdSignature } from '../src/triggers/pagerduty.js';
 
 const secret = 'test-secret';
 const body = Buffer.from(JSON.stringify({ event: { data: { id: 'P1' } } }));
@@ -21,5 +21,14 @@ describe('verifyPdSignature', () => {
     expect(verifyPdSignature(body, undefined, secret)).toBe(false);
     const tampered = Buffer.from(body.toString().replace('P1', 'P2'));
     expect(verifyPdSignature(tampered, `v1=${sign(secret, body)}`, secret)).toBe(false);
+  });
+});
+
+describe('equalToken', () => {
+  it('accepts only the exact shared token', () => {
+    expect(equalToken('tok-123', 'tok-123')).toBe(true);
+    expect(equalToken('tok-124', 'tok-123')).toBe(false);
+    expect(equalToken('tok-12', 'tok-123')).toBe(false);
+    expect(equalToken(undefined, 'tok-123')).toBe(false);
   });
 });

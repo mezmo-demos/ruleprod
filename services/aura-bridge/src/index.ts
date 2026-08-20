@@ -45,6 +45,7 @@ const app = buildServer({
   loggerInstance: logger,
   engine,
   pdWebhookSecret: config.pdWebhookSecret,
+  pdWebhookToken: config.pdWebhookToken,
   admin: {
     slack,
     getAuraMode: () => auraMode,
