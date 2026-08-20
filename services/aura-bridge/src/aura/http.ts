@@ -92,6 +92,11 @@ function mapAuraEvent(event: string, p: Record<string, unknown>): AuraEvent | un
       return { kind: 'status', text: `\`${str(p.tool_name ?? p.name, '?')}\` finished` };
     case 'aura.worker_phase':
       return { kind: 'status', text: str(p.phase ?? p.message, 'worker phase') };
+    case 'aura.tool_usage':
+    case 'aura.usage': {
+      const total = typeof p.total_tokens === 'number' ? p.total_tokens : Number(p.total_tokens);
+      return Number.isFinite(total) && total > 0 ? { kind: 'usage', totalTokens: total } : undefined;
+    }
     default:
       if (event === 'aura.orchestrator.worker_reasoning') return undefined; // delta noise
       if (event.startsWith('aura.orchestrator.')) {
