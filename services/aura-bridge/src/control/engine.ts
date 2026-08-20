@@ -187,19 +187,16 @@ export class InvestigationEngine {
     let finalText: string | undefined;
     const connector = this.deps.connector();
 
-    const render = () => investigatingText(latestStatus, startedAt, tokensUsed);
-    const editStatus = async (force = false) => {
+    const editStatus = async () => {
       const now = Date.now();
-      if (!force && now - lastEdit < this.deps.statusUpdateIntervalMs) return;
+      if (now - lastEdit < this.deps.statusUpdateIntervalMs) return;
       lastEdit = now;
-      await slack.updateMessage({ channel: statusMsg.channel, ts: statusMsg.ts, text: render() });
+      await slack.updateMessage({
+        channel: statusMsg.channel,
+        ts: statusMsg.ts,
+        text: investigatingText(latestStatus, tokensUsed),
+      });
     };
-    // A long tool call or LLM turn can be event-silent for minutes; the ticker
-    // keeps the elapsed/token hint moving so the message never looks hung.
-    const ticker = setInterval(() => {
-      void editStatus(true).catch(() => {});
-    }, 15_000);
-    ticker.unref?.();
 
     try {
       for await (const ev of connector.run({ sessionId: req.incident.sessionId, messages })) {
@@ -263,7 +260,7 @@ export class InvestigationEngine {
       await slack.updateMessage({
         channel: statusMsg.channel,
         ts: statusMsg.ts,
-        text: doneText(startedAt),
+        text: doneText(startedAt, tokensUsed),
       });
       store.addNode(req.incident, {
         parentId: req.parentNodeId,
@@ -279,8 +276,6 @@ export class InvestigationEngine {
         ts: statusMsg.ts,
         text: `:x: AURA investigation failed: ${(err as Error).message}`,
       });
-    } finally {
-      clearInterval(ticker);
     }
   }
 
@@ -295,10 +290,13 @@ export class InvestigationEngine {
 
 // Single line, rewritten in place — no accumulating content under it. Elapsed
 // time and token spend keep it visibly alive between sparse events.
-function investigatingText(latest?: string, startedAt?: number, tokensUsed = 0): string {
+// No clock here by design; totals land on the completion line. Token counts
+// appear mid-run only when aura reports them (today its orchestration mode
+// reports usage once, at stream end — so real runs usually show them only on
+// completion; the sim reports per-step).
+function investigatingText(latest?: string, tokensUsed = 0): string {
   const parts = [`:mag: *AURA is investigating…*`];
   if (latest) parts.push(`_${truncate(latest, 120)}_`);
-  if (startedAt) parts.push(elapsedText(startedAt));
   if (tokensUsed > 0) parts.push(`~${formatTokens(tokensUsed)} tokens`);
   return parts.join(' — ');
 }
@@ -314,8 +312,10 @@ function formatTokens(n: number): string {
 
 // No :white_check_mark: — it sits right next to the approval-resolved message,
 // which owns that emoji.
-function doneText(startedAt: number): string {
-  return `:mag: *Investigation complete* (${elapsedText(startedAt)}) — findings below.`;
+function doneText(startedAt: number, tokensUsed = 0): string {
+  const totals = [elapsedText(startedAt)];
+  if (tokensUsed > 0) totals.push(`~${formatTokens(tokensUsed)} tokens`);
+  return `:mag: *Investigation complete* (${totals.join(' · ')}) — findings below.`;
 }
 
 const truncate = (s: string, n: number) => (s.length > n ? `${s.slice(0, n)}…` : s);
