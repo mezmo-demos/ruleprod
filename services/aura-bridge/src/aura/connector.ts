@@ -18,6 +18,8 @@ export interface ChatMessage {
 
 export type AuraEvent =
   | { kind: 'status'; text: string }
+  /** Per-LLM-call token snapshot — a liveness signal during quiet stretches. */
+  | { kind: 'usage'; totalTokens: number }
   | { kind: 'approval_pending'; decisionId: string; toolName: string; args: unknown }
   | { kind: 'approval_completed'; decisionId: string; outcome: string }
   | { kind: 'final'; text: string }

@@ -174,24 +174,36 @@ export class InvestigationEngine {
 
     const startedAt = Date.now();
     let lastEdit = 0;
+    let latestStatus: string | undefined;
+    let tokensUsed = 0;
     let finalText: string | undefined;
     const connector = this.deps.connector();
+
+    const render = () => investigatingText(latestStatus, startedAt, tokensUsed);
+    const editStatus = async (force = false) => {
+      const now = Date.now();
+      if (!force && now - lastEdit < this.deps.statusUpdateIntervalMs) return;
+      lastEdit = now;
+      await slack.updateMessage({ channel: statusMsg.channel, ts: statusMsg.ts, text: render() });
+    };
+    // A long tool call or LLM turn can be event-silent for minutes; the ticker
+    // keeps the elapsed/token hint moving so the message never looks hung.
+    const ticker = setInterval(() => {
+      void editStatus(true).catch(() => {});
+    }, 15_000);
+    ticker.unref?.();
 
     try {
       for await (const ev of connector.run({ sessionId: req.incident.sessionId, messages })) {
         switch (ev.kind) {
-          case 'status': {
-            const now = Date.now();
-            if (now - lastEdit >= this.deps.statusUpdateIntervalMs) {
-              lastEdit = now;
-              await slack.updateMessage({
-                channel: statusMsg.channel,
-                ts: statusMsg.ts,
-                text: investigatingText(ev.text),
-              });
-            }
+          case 'status':
+            latestStatus = ev.text;
+            await editStatus();
             break;
-          }
+          case 'usage':
+            tokensUsed += ev.totalTokens;
+            await editStatus();
+            break;
           case 'approval_pending': {
             const posted = await slack.postMessage({
               channel: req.incident.channelId,
@@ -259,6 +271,8 @@ export class InvestigationEngine {
         ts: statusMsg.ts,
         text: `:x: AURA investigation failed: ${(err as Error).message}`,
       });
+    } finally {
+      clearInterval(ticker);
     }
   }
 
@@ -271,18 +285,29 @@ export class InvestigationEngine {
   }
 }
 
-// Single line, rewritten in place — no accumulating content under it.
-function investigatingText(latest?: string): string {
-  const suffix = latest ? ` — _${truncate(latest, 140)}_` : '';
-  return `:mag: *AURA is investigating…*${suffix}`;
+// Single line, rewritten in place — no accumulating content under it. Elapsed
+// time and token spend keep it visibly alive between sparse events.
+function investigatingText(latest?: string, startedAt?: number, tokensUsed = 0): string {
+  const parts = [`:mag: *AURA is investigating…*`];
+  if (latest) parts.push(`_${truncate(latest, 120)}_`);
+  if (startedAt) parts.push(elapsedText(startedAt));
+  if (tokensUsed > 0) parts.push(`~${formatTokens(tokensUsed)} tokens`);
+  return parts.join(' — ');
+}
+
+function elapsedText(startedAt: number): string {
+  const secs = Math.round((Date.now() - startedAt) / 1000);
+  return secs >= 60 ? `${Math.floor(secs / 60)}m ${secs % 60}s` : `${secs}s`;
+}
+
+function formatTokens(n: number): string {
+  return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
 }
 
 // No :white_check_mark: — it sits right next to the approval-resolved message,
 // which owns that emoji.
 function doneText(startedAt: number): string {
-  const secs = Math.round((Date.now() - startedAt) / 1000);
-  const elapsed = secs >= 60 ? `${Math.floor(secs / 60)}m ${secs % 60}s` : `${secs}s`;
-  return `:mag: *Investigation complete* (${elapsed}) — findings below.`;
+  return `:mag: *Investigation complete* (${elapsedText(startedAt)}) — findings below.`;
 }
 
 const truncate = (s: string, n: number) => (s.length > n ? `${s.slice(0, n)}…` : s);
