@@ -16,6 +16,8 @@ function setup() {
     connector: () => sim,
     logger: noopLogger,
     statusUpdateIntervalMs: 0,
+    channelNamePattern: 'incident_{number}',
+    channelResolve: { attempts: 5, delayMs: 5 },
   });
   return { store, slack, sim, engine };
 }
@@ -120,6 +122,27 @@ describe('InvestigationEngine', () => {
     expect(buttonUpdate?.text).toContain('approved');
     expect(engine.status().pendingApprovals).toHaveLength(0);
     expect(slack.posts.at(-1)!.text).toContain('kubelet');
+  });
+
+  it('resolves the incident channel from the naming pattern, with retry and join', async () => {
+    const { store, slack, engine } = setup();
+    // Channel appears only after the first lookup — the PD webhook racing the
+    // workflow's channel creation.
+    setTimeout(() => slack.channels.set('incident_42', 'C-INC42'), 12);
+    await engine.handlePdIncident({ incidentId: 'PD-abc', incidentNumber: 42 });
+
+    expect(slack.findChannelIdCalls).toBeGreaterThan(1);
+    expect(slack.joined).toContain('C-INC42');
+    expect(store.getIncident('PD-abc')?.channelId).toBe('C-INC42');
+    expect(slack.posts.at(-1)?.channel).toBe('C-INC42');
+  });
+
+  it('fails cleanly when the incident channel never appears', async () => {
+    const { slack, engine } = setup();
+    await expect(engine.handlePdIncident({ incidentId: 'PD-x', incidentNumber: 7 })).rejects.toThrow(
+      'incident_7',
+    );
+    expect(slack.posts).toHaveLength(0);
   });
 
   it('reports unknown decisions as expired', async () => {

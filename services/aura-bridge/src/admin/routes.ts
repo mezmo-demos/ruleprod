@@ -30,21 +30,25 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminDeps): void
     return { auraMode: mode };
   });
 
-  // Fake PD incident: same path as the real webhook, minus PagerDuty.
-  app.post<{ Body: { incidentId?: string; channelId?: string; title?: string } }>(
+  // Fake PD incident: same path as the real webhook, minus PagerDuty. Either
+  // an explicit channelId, or an incidentNumber to exercise pattern resolution.
+  app.post<{ Body: { incidentId?: string; incidentNumber?: number; channelId?: string; title?: string } }>(
     '/admin/pd-incident',
     async (request, reply) => {
       const incidentId = request.body?.incidentId ?? `FAKE-${++testCounter}`;
-      const channelId = request.body?.channelId;
-      if (!channelId) {
-        return reply.status(400).send({ error: { code: 'invalid_request', message: 'channelId required' } });
+      const { channelId, incidentNumber } = request.body ?? {};
+      if (!channelId && incidentNumber === undefined) {
+        return reply
+          .status(400)
+          .send({ error: { code: 'invalid_request', message: 'channelId or incidentNumber required' } });
       }
       void deps.engine.handlePdIncident({
         incidentId,
+        incidentNumber,
         channelId,
         title: request.body?.title ?? 'Fake incident from admin API',
       });
-      return reply.status(202).send({ incidentId, channelId });
+      return reply.status(202).send({ incidentId, channelId: channelId ?? `(pattern: ${incidentNumber})` });
     },
   );
 

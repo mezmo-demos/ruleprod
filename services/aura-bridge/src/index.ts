@@ -37,6 +37,8 @@ const engine = new InvestigationEngine({
   connector: () => (auraMode === 'real' ? real : sim),
   logger,
   statusUpdateIntervalMs: config.statusUpdateIntervalMs,
+  channelNamePattern: config.channelNamePattern,
+  channelResolve: { attempts: config.channelResolveAttempts, delayMs: config.channelResolveDelayMs },
 });
 
 const app = buildServer({

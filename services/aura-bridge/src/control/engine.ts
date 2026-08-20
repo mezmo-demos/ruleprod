@@ -16,6 +16,11 @@ export interface EngineDeps {
   connector: () => AuraConnector;
   logger: FastifyBaseLogger;
   statusUpdateIntervalMs: number;
+  /** `{number}` is replaced with the PD incident number. Must match the PD
+   * incident workflow's "Create a Slack Channel" action. */
+  channelNamePattern: string;
+  /** The PD webhook races the workflow's channel creation — retry the lookup. */
+  channelResolve: { attempts: number; delayMs: number };
 }
 
 interface RunRequest {
@@ -40,11 +45,25 @@ export class InvestigationEngine {
 
   constructor(private deps: EngineDeps) {}
 
-  /** PagerDuty webhook (or admin injection): start the root investigation. */
-  async handlePdIncident(opts: { incidentId: string; channelId: string; title?: string }): Promise<void> {
+  /** PagerDuty webhook (or admin injection): start the root investigation.
+   * Without an explicit channelId, the incident channel is resolved from the
+   * naming pattern + incident number. */
+  async handlePdIncident(opts: {
+    incidentId: string;
+    incidentNumber?: number;
+    channelId?: string;
+    title?: string;
+  }): Promise<void> {
+    let channelId = opts.channelId;
+    if (!channelId) {
+      if (opts.incidentNumber === undefined) {
+        throw new Error('need channelId or incidentNumber to locate the incident channel');
+      }
+      channelId = await this.resolveIncidentChannel(opts.incidentNumber);
+    }
     const incident = this.deps.store.upsertIncident({
       id: opts.incidentId,
-      channelId: opts.channelId,
+      channelId,
       title: opts.title,
     });
     const prompt = `Investigate PagerDuty incident ${incident.id}${incident.title ? `: "${incident.title}"` : ''}. Identify the root cause and impacted services; report specific resource names and evidence.`;
@@ -103,6 +122,26 @@ export class InvestigationEngine {
       pendingApprovals: [...this.pendingApprovals.keys()],
       busy: incidents.filter((i) => this.queue.isBusy(i.id)).map((i) => i.id),
     };
+  }
+
+  private async resolveIncidentChannel(incidentNumber: number): Promise<string> {
+    const name = this.deps.channelNamePattern.replace('{number}', String(incidentNumber));
+    const { attempts, delayMs } = this.deps.channelResolve;
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+      const channelId = await this.deps.slack.findChannelId(name);
+      if (channelId) {
+        try {
+          await this.deps.slack.joinChannel(channelId);
+        } catch (err) {
+          // already_in_channel and friends — posting will surface real failures.
+          this.deps.logger.info({ err, channelId }, 'joinChannel failed, continuing');
+        }
+        return channelId;
+      }
+      this.deps.logger.info({ name, attempt }, 'incident channel not found yet, retrying');
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+    throw new Error(`incident channel "${name}" not found after ${attempts} attempts`);
   }
 
   private enqueue(req: RunRequest): Promise<void> {

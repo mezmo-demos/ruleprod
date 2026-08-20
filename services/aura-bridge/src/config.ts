@@ -17,6 +17,11 @@ export interface BridgeConfig {
   statusUpdateIntervalMs: number;
   /** Delay between simulated thinking steps. */
   simStepMs: number;
+  /** Incident channel name, `{number}` = PD incident number. Must match the
+   * PD incident workflow's "Create a Slack Channel" action. */
+  channelNamePattern: string;
+  channelResolveAttempts: number;
+  channelResolveDelayMs: number;
 }
 
 export function configFromEnv(env: NodeJS.ProcessEnv = process.env): BridgeConfig {
@@ -33,5 +38,8 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env): BridgeConfi
     stateFile: env.STATE_FILE,
     statusUpdateIntervalMs: Number(env.STATUS_UPDATE_INTERVAL_MS ?? 2000),
     simStepMs: Number(env.SIM_STEP_MS ?? 1500),
+    channelNamePattern: env.CHANNEL_NAME_PATTERN ?? 'incident_{number}',
+    channelResolveAttempts: Number(env.CHANNEL_RESOLVE_ATTEMPTS ?? 20),
+    channelResolveDelayMs: Number(env.CHANNEL_RESOLVE_DELAY_MS ?? 3000),
   };
 }

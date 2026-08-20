@@ -28,6 +28,10 @@ export interface UpdateOptions {
 export interface SlackPort {
   postMessage(opts: PostOptions): Promise<PostedMessage>;
   updateMessage(opts: UpdateOptions): Promise<void>;
+  /** Resolve a public channel's id by exact name; undefined if not found (yet). */
+  findChannelId(name: string): Promise<string | undefined>;
+  /** Join a public channel (bot must be a member to post). Idempotent. */
+  joinChannel(channelId: string): Promise<void>;
 }
 
 export function approvalBlocks(opts: { decisionId: string; toolName: string; args: unknown }): unknown[] {
@@ -87,6 +91,15 @@ export class ConsoleSlack implements SlackPort {
   async updateMessage(opts: UpdateOptions): Promise<void> {
     this.logger.info({ slack: opts }, 'slack updateMessage (console mode)');
   }
+
+  async findChannelId(name: string): Promise<string | undefined> {
+    // Deterministic fake so PD-triggered flows work without a workspace.
+    return `C-${name}`;
+  }
+
+  async joinChannel(channelId: string): Promise<void> {
+    this.logger.info({ channelId }, 'slack joinChannel (console mode)');
+  }
 }
 
 // Structural view of @slack/web-api's WebClient. Method args are `never` so
@@ -95,6 +108,13 @@ export interface SlackWebApi {
   chat: {
     postMessage(args: never): Promise<{ ts?: string; channel?: string }>;
     update(args: never): Promise<unknown>;
+  };
+  conversations: {
+    list(args: never): Promise<{
+      channels?: Array<{ id?: string; name?: string }>;
+      response_metadata?: { next_cursor?: string };
+    }>;
+    join(args: never): Promise<unknown>;
   };
 }
 
@@ -120,6 +140,26 @@ export class RealSlack implements SlackPort {
       text: opts.text,
       ...(opts.blocks ? { blocks: opts.blocks } : {}),
     } as never);
+  }
+
+  async findChannelId(name: string): Promise<string | undefined> {
+    let cursor: string | undefined;
+    do {
+      const res = await this.client.conversations.list({
+        types: 'public_channel',
+        exclude_archived: true,
+        limit: 200,
+        ...(cursor ? { cursor } : {}),
+      } as never);
+      const hit = res.channels?.find((c) => c.name === name);
+      if (hit?.id) return hit.id;
+      cursor = res.response_metadata?.next_cursor || undefined;
+    } while (cursor);
+    return undefined;
+  }
+
+  async joinChannel(channelId: string): Promise<void> {
+    await this.client.conversations.join({ channel: channelId } as never);
   }
 }
 

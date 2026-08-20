@@ -6,6 +6,10 @@ import type { PostedMessage, PostOptions, SlackPort, UpdateOptions } from '../sr
 export class RecordingSlack implements SlackPort {
   posts: Array<PostOptions & { ts: string }> = [];
   updates: UpdateOptions[] = [];
+  joined: string[] = [];
+  /** name -> channel id; findChannelId misses names not present. */
+  channels = new Map<string, string>();
+  findChannelIdCalls = 0;
   private counter = 0;
 
   async postMessage(opts: PostOptions): Promise<PostedMessage> {
@@ -16,6 +20,15 @@ export class RecordingSlack implements SlackPort {
 
   async updateMessage(opts: UpdateOptions): Promise<void> {
     this.updates.push(opts);
+  }
+
+  async findChannelId(name: string): Promise<string | undefined> {
+    this.findChannelIdCalls += 1;
+    return this.channels.get(name);
+  }
+
+  async joinChannel(channelId: string): Promise<void> {
+    this.joined.push(channelId);
   }
 }
 

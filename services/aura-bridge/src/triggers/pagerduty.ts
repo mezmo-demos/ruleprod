@@ -27,15 +27,13 @@ interface PdWebhookBody {
     event_type?: string;
     data?: {
       id?: string;
+      number?: number;
       title?: string;
-      // Delivered by the PD incident workflow alongside the incident (custom
-      // field / workflow variable) — falls back to channel-name lookup later
-      // if the workflow can't carry it. See PLAN.md "Verify during build".
-      slack_channel_id?: string;
     };
   };
   // Flat shape used by admin/TUI injection.
   incidentId?: string;
+  incidentNumber?: number;
   channelId?: string;
   title?: string;
 }
@@ -66,19 +64,29 @@ export function registerPagerDutyTrigger(
         return reply.status(400).send({ error: { code: 'invalid_request', message: 'invalid JSON' } });
       }
 
+      // Only incident.triggered starts an investigation; acks/resolves/etc.
+      // from the same subscription are acknowledged and dropped.
+      const eventType = body.event?.event_type;
+      if (eventType && eventType !== 'incident.triggered') {
+        return reply.status(202).send({ status: 'ignored' });
+      }
+
       const incidentId = body.event?.data?.id ?? body.incidentId;
-      const channelId = body.event?.data?.slack_channel_id ?? body.channelId;
+      const incidentNumber = body.event?.data?.number ?? body.incidentNumber;
+      const channelId = body.channelId;
       const title = body.event?.data?.title ?? body.title;
-      if (!incidentId || !channelId) {
+      if (!incidentId || (!channelId && incidentNumber === undefined)) {
         return reply.status(400).send({
-          error: { code: 'invalid_request', message: 'missing incident id or slack channel id' },
+          error: { code: 'invalid_request', message: 'missing incident id, and no channel id or incident number' },
         });
       }
 
       // Ack immediately; the investigation runs long after PD's timeout.
-      void opts.engine.handlePdIncident({ incidentId, channelId, title }).catch((err) => {
-        request.log.error({ err, incidentId }, 'pd-triggered investigation failed to start');
-      });
+      void opts.engine
+        .handlePdIncident({ incidentId, incidentNumber, channelId, title })
+        .catch((err) => {
+          request.log.error({ err, incidentId }, 'pd-triggered investigation failed to start');
+        });
       return reply.status(202).send({ status: 'accepted' });
     });
   });

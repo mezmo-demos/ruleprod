@@ -49,8 +49,9 @@ Status: draft, pending Jeff approval. Overview + architecture: [README.md](READM
 
 - terramate stack `envs/ruleprod/pagerduty/` (strongdm precedent: env-var creds in both GH workflows, provider pinned in `globals.tm.hcl`, kill switch, outputs → SM `ruleprod/pagerduty/*`).
 - Resources: service, Events v2 integration (routing key → SM), incident workflow (create Slack channel, post summary, post one-liner to `#incidents`, send webhook to bridge), v3 webhook subscription.
-- PD↔Slack extension install is manual OAuth (both sides) before `pagerduty_slack_connection` works.
-- Channel id delivery: spec wants incident id + channel id in the webhook. VERIFY whether the workflow webhook action can carry the created channel id; fallback = bridge resolves channel from the captured naming pattern via Slack API.
+- PD↔Slack extension install is manual OAuth (both sides) before Slack workflow actions work. Installed 2026-08-20.
+- Channel naming: no global PD setting — the pattern lives in each workflow's "Create a Slack Channel" action. Pattern: `incident_{{incident.incident_number}}` (Jeff's hand-built `test` workflow = reference; read via `GET /incident_workflows` once the token exists, mirror in TF, then delete `test`).
+- Channel id delivery: RESOLVED — the v3 webhook carries incident number only; bridge computes the channel name from the pattern and resolves the id via Slack API with retries (webhook races the channel creation), then `conversations.join` before posting.
 - v3 webhook signing secret: shown once at subscription create. TF resource doesn't export it usably → create subscription via small script, write secret to SM, `kubectl rollout restart` bridge.
 - Bridge gets a PD API token (SM) for fetching incident detail if webhook payloads are thin.
 
