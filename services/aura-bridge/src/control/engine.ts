@@ -4,6 +4,7 @@
 // the demo's message choreography.
 import type { FastifyBaseLogger } from 'fastify';
 import type { AuraConnector, ChatMessage } from '../aura/connector.js';
+import { markdownToMrkdwn } from '../outbound/mrkdwn.js';
 import { approvalBlocks, approvalResolvedBlocks, type SlackPort } from '../outbound/slack.js';
 import { authorizeApprover } from './approver.js';
 import { KeyedQueue } from './queue.js';
@@ -168,10 +169,10 @@ export class InvestigationEngine {
     const statusMsg = await slack.postMessage({
       channel: req.incident.channelId,
       threadTs: req.threadTs,
-      text: ':mag: AURA is investigating…',
+      text: investigatingText(),
     });
 
-    const statuses: string[] = [];
+    const startedAt = Date.now();
     let lastEdit = 0;
     let finalText: string | undefined;
     const connector = this.deps.connector();
@@ -180,14 +181,13 @@ export class InvestigationEngine {
       for await (const ev of connector.run({ sessionId: req.incident.sessionId, messages })) {
         switch (ev.kind) {
           case 'status': {
-            statuses.push(ev.text);
             const now = Date.now();
             if (now - lastEdit >= this.deps.statusUpdateIntervalMs) {
               lastEdit = now;
               await slack.updateMessage({
                 channel: statusMsg.channel,
                 ts: statusMsg.ts,
-                text: investigatingText(statuses),
+                text: investigatingText(ev.text),
               });
             }
             break;
@@ -238,12 +238,12 @@ export class InvestigationEngine {
       const answer = await slack.postMessage({
         channel: req.incident.channelId,
         threadTs: req.threadTs,
-        text: finalText,
+        text: markdownToMrkdwn(finalText),
       });
       await slack.updateMessage({
         channel: statusMsg.channel,
         ts: statusMsg.ts,
-        text: doneText(statuses),
+        text: doneText(startedAt),
       });
       store.addNode(req.incident, {
         parentId: req.parentNodeId,
@@ -271,11 +271,18 @@ export class InvestigationEngine {
   }
 }
 
-function investigatingText(statuses: string[]): string {
-  const recent = statuses.slice(-3).map((s) => `> ${s}`);
-  return [':mag: AURA is investigating…', ...recent].join('\n');
+// Single line, rewritten in place — no accumulating content under it.
+function investigatingText(latest?: string): string {
+  const suffix = latest ? ` — _${truncate(latest, 140)}_` : '';
+  return `:mag: *AURA is investigating…*${suffix}`;
 }
 
-function doneText(statuses: string[]): string {
-  return `:white_check_mark: AURA finished investigating (${statuses.length} steps) — answer below.`;
+// No :white_check_mark: — it sits right next to the approval-resolved message,
+// which owns that emoji.
+function doneText(startedAt: number): string {
+  const secs = Math.round((Date.now() - startedAt) / 1000);
+  const elapsed = secs >= 60 ? `${Math.floor(secs / 60)}m ${secs % 60}s` : `${secs}s`;
+  return `:mag: *Investigation complete* (${elapsed}) — findings below.`;
 }
+
+const truncate = (s: string, n: number) => (s.length > n ? `${s.slice(0, n)}…` : s);

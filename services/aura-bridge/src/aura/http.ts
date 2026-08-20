@@ -84,17 +84,23 @@ function mapAuraEvent(event: string, p: Record<string, unknown>): AuraEvent | un
     case 'aura.progress':
       return { kind: 'status', text: str(p.message ?? p.status ?? p.detail, 'working…') };
     case 'aura.reasoning':
-      return { kind: 'status', text: `thinking: ${truncate(str(p.text ?? p.content, ''), 160)}` };
+      // Streamed as tiny deltas — thousands per run, each meaningless alone.
+      return undefined;
     case 'aura.tool_start':
-      return { kind: 'status', text: `running tool ${str(p.tool_name ?? p.name, '?')}` };
+      return { kind: 'status', text: `running \`${str(p.tool_name ?? p.name, '?')}\`` };
     case 'aura.tool_complete':
-      return { kind: 'status', text: `tool ${str(p.tool_name ?? p.name, '?')} finished` };
+      return { kind: 'status', text: `\`${str(p.tool_name ?? p.name, '?')}\` finished` };
     case 'aura.worker_phase':
       return { kind: 'status', text: str(p.phase ?? p.message, 'worker phase') };
     default:
+      if (event === 'aura.orchestrator.worker_reasoning') return undefined; // delta noise
       if (event.startsWith('aura.orchestrator.')) {
         const phase = event.slice('aura.orchestrator.'.length).replaceAll('_', ' ');
-        return { kind: 'status', text: `orchestrator: ${str(p.message ?? p.summary ?? p.goal, phase)}` };
+        const detail = str(
+          p.message ?? p.summary ?? p.goal ?? p.description ?? p.task ?? p.phase ?? p.worker,
+          '',
+        );
+        return { kind: 'status', text: detail ? `${phase}: ${truncate(detail, 120)}` : phase };
       }
       return undefined; // session_info, usage, mcp_status, ... — not user-facing
   }
