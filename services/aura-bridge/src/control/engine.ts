@@ -38,6 +38,17 @@ interface PendingApproval {
   channel: string;
   ts: string;
   incidentId: string;
+  /** Records the human's decision into the owning run's sticky-decision map. */
+  record: (approved: boolean, actor: string) => void;
+}
+
+/** A human decision on a tool, sticky for the remainder of one run. */
+interface RunDecision {
+  approved: boolean;
+  actor: string;
+  autoApplied: number;
+  channel: string;
+  ts: string;
 }
 
 export class InvestigationEngine {
@@ -112,6 +123,7 @@ export class InvestigationEngine {
     );
     if (!resolved) return 'This approval already expired or was resolved.';
     if (pending) {
+      pending.record(opts.approved, opts.userName ? `@${opts.userName}` : opts.userId);
       this.pendingApprovals.delete(opts.decisionId);
       await this.deps.slack.updateMessage({
         channel: pending.channel,
@@ -187,6 +199,7 @@ export class InvestigationEngine {
     let finalText: string | undefined;
     const connector = this.deps.connector();
 
+    const runDecisions = new Map<string, RunDecision>();
     const render = () => investigatingText(latestStatus, startedAt, tokensUsed);
     const editStatus = async (force = false) => {
       const now = Date.now();
@@ -213,6 +226,33 @@ export class InvestigationEngine {
             await editStatus();
             break;
           case 'approval_pending': {
+            // One "get the node logs" fans out into many gated calls (per
+            // node, per file). A human decision on a tool sticks for the rest
+            // of the run: later calls auto-resolve, the original message
+            // shows the running count.
+            const decided = runDecisions.get(ev.toolName);
+            if (decided) {
+              decided.autoApplied += 1;
+              await connector.resolveApproval(
+                ev.decisionId,
+                decided.approved,
+                decided.approved
+                  ? undefined
+                  : `denied by ${decided.actor} (decision auto-applied for the rest of this run)`,
+              );
+              await slack.updateMessage({
+                channel: decided.channel,
+                ts: decided.ts,
+                text: `\`${ev.toolName}\` ${decided.approved ? 'approved' : 'denied'}`,
+                blocks: approvalResolvedBlocks({
+                  toolName: ev.toolName,
+                  outcome: decided.approved ? 'approved' : 'denied',
+                  actor: decided.actor,
+                  autoApplied: decided.autoApplied,
+                }),
+              });
+              break;
+            }
             const posted = await slack.postMessage({
               channel: req.incident.channelId,
               threadTs: req.threadTs,
@@ -227,6 +267,15 @@ export class InvestigationEngine {
               channel: posted.channel,
               ts: posted.ts,
               incidentId: req.incident.id,
+              record: (approved, actor) => {
+                runDecisions.set(ev.toolName, {
+                  approved,
+                  actor,
+                  autoApplied: 0,
+                  channel: posted.channel,
+                  ts: posted.ts,
+                });
+              },
             });
             break;
           }

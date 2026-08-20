@@ -117,7 +117,7 @@ describe('InvestigationEngine', () => {
     expect(buttonPost!.broadcast).toBe(true); // "also send to #channel"
 
     const decisionId = engine.status().pendingApprovals[0]!;
-    const outcome = await engine.handleApprovalAction({ decisionId, userId: 'U123', approved: true });
+    const outcome = await engine.handleApprovalAction({ decisionId, userId: 'U123', userName: 'jeff', approved: true });
     expect(outcome).toContain('Approved');
     await run;
 
@@ -125,6 +125,13 @@ describe('InvestigationEngine', () => {
     expect(buttonUpdate?.text).toContain('approved');
     expect(engine.status().pendingApprovals).toHaveLength(0);
     expect(slack.posts.at(-1)!.text).toContain('kubelet');
+
+    // The sim's second gated call auto-resolved: exactly one buttons post,
+    // and the original message reports the auto-applied count.
+    const buttonPosts = slack.posts.filter((p) => p.blocks && p.text.includes('approve or deny'));
+    expect(buttonPosts).toHaveLength(1);
+    const finalUpdate = slack.updates.filter((u) => u.ts === buttonPost!.ts).at(-1);
+    expect(JSON.stringify(finalUpdate?.blocks)).toContain('auto-applied to 1 more');
   });
 
   it('resolves the incident channel from the naming pattern, with retry and join', async () => {

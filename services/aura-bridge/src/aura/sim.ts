@@ -54,8 +54,11 @@ export class SimAuraConnector implements AuraConnector {
     let approvalNote = '';
     if (APPROVAL_TRIGGER.test(prompt)) {
       const decisionId = `sim-decision-${++this.decisionCounter}`;
+      // Register BEFORE yielding — the consumer may resolve synchronously on
+      // receipt (sticky decisions), before this generator resumes.
+      const decision = this.awaitDecision(decisionId);
       yield { kind: 'approval_pending', decisionId, toolName: 'nodes_log', args: { name: 'ip-10-0-1-23.ec2.internal', query: ['kubelet'] } };
-      const approved = await this.awaitDecision(decisionId);
+      const approved = await decision;
       yield { kind: 'approval_completed', decisionId, outcome: approved ? 'approved' : 'denied' };
       if (!approved) {
         yield { kind: 'final', text: `The \`nodes_log\` call was denied, so I stopped there.\n\n${pick(FINDINGS, runNumber)}\n\n_(simulated response, run ${runNumber})_` };
@@ -63,6 +66,13 @@ export class SimAuraConnector implements AuraConnector {
       }
       await sleep(this.stepMs);
       yield { kind: 'status', text: 'cluster_inspector: reading kubelet logs from approved node' };
+      // Real aura fans one request into per-node calls, each gated — this
+      // second approval exercises the bridge's sticky-decision handling.
+      const decisionId2 = `sim-decision-${++this.decisionCounter}`;
+      const decision2 = this.awaitDecision(decisionId2);
+      yield { kind: 'approval_pending', decisionId: decisionId2, toolName: 'nodes_log', args: { name: 'ip-10-0-2-41.ec2.internal', query: ['kubelet'] } };
+      const approved2 = await decision2;
+      yield { kind: 'approval_completed', decisionId: decisionId2, outcome: approved2 ? 'approved' : 'denied' };
       approvalNote = 'Node kubelet logs confirm the container restarts line up with memory-cgroup OOM events.\n\n';
     }
 

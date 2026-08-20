@@ -45,15 +45,20 @@ describe('SimAuraConnector', () => {
       }
     })();
 
-    while (!events.some((e) => e.kind === 'approval_pending')) {
-      await new Promise((r) => setTimeout(r, 5));
+    // The sim fans out a second gated call after the first approval — resolve
+    // each as it appears.
+    for (let n = 1; n <= 2; n += 1) {
+      while (events.filter((e) => e.kind === 'approval_pending').length < n) {
+        await new Promise((r) => setTimeout(r, 5));
+      }
+      const pending = events.filter((e) => e.kind === 'approval_pending')[n - 1] as { decisionId: string };
+      expect(await sim.resolveApproval(pending.decisionId, true)).toBe(true);
     }
-    const pending = events.find((e) => e.kind === 'approval_pending') as { decisionId: string };
-    expect(await sim.resolveApproval(pending.decisionId, true)).toBe(true);
     await done;
 
-    const completed = events.find((e) => e.kind === 'approval_completed') as { outcome: string };
-    expect(completed.outcome).toBe('approved');
+    const completed = events.filter((e) => e.kind === 'approval_completed');
+    expect(completed).toHaveLength(2);
+    expect((completed[0] as { outcome: string }).outcome).toBe('approved');
     expect(events.at(-1)?.kind).toBe('final');
   });
 

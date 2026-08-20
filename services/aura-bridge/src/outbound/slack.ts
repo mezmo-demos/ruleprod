@@ -66,13 +66,22 @@ export function approvalBlocks(opts: { decisionId: string; toolName: string; arg
   ];
 }
 
-export function approvalResolvedBlocks(opts: { toolName: string; outcome: string; actor?: string }): unknown[] {
+export function approvalResolvedBlocks(opts: {
+  toolName: string;
+  outcome: string;
+  actor?: string;
+  autoApplied?: number;
+}): unknown[] {
   const emoji = opts.outcome === 'approved' ? ':white_check_mark:' : ':no_entry:';
-  const by = opts.actor ? ` by <@${opts.actor}>` : '';
+  // actor may be a raw Slack id (renders via <@id>) or an @handle string.
+  const by = opts.actor ? ` by ${opts.actor.startsWith('@') ? opts.actor : `<@${opts.actor}>`}` : '';
+  const auto = opts.autoApplied
+    ? ` — auto-applied to ${opts.autoApplied} more \`${opts.toolName}\` call${opts.autoApplied === 1 ? '' : 's'} this run`
+    : '';
   return [
     {
       type: 'section',
-      text: { type: 'mrkdwn', text: `${emoji} \`${opts.toolName}\` ${opts.outcome}${by}` },
+      text: { type: 'mrkdwn', text: `${emoji} \`${opts.toolName}\` ${opts.outcome}${by}${auto}` },
     },
   ];
 }
