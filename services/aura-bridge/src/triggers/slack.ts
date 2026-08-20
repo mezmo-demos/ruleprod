@@ -37,8 +37,10 @@ export async function startSlackTrigger(deps: SlackTriggerDeps): Promise<Started
     if (action.type !== 'button' || !('action_id' in action)) return;
     const approved = action.action_id === 'aura_approve';
     const userId = body.user.id;
+    // Interactive payloads carry the handle — no users:read scope needed.
+    const userName = 'username' in body.user ? body.user.username : body.user.name;
     void deps.engine
-      .handleApprovalAction({ decisionId: action.value ?? '', userId, approved })
+      .handleApprovalAction({ decisionId: action.value ?? '', userId, userName, approved })
       .catch((err) => deps.logger.error({ err }, 'approval action failed'));
   });
 
