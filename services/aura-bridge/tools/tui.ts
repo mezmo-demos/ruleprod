@@ -1,6 +1,8 @@
-// Dev TUI for the bridge admin API. Run with `npm run tui -w @ruleprod/aura-bridge`
-// (BRIDGE_URL to target a port-forwarded pod). Deliberately a dumb menu over
-// HTTP so the bridge image never carries TUI code.
+// TUI for the bridge admin API — deliberately a dumb menu over HTTP.
+// Local: `npm run tui -w @ruleprod/aura-bridge` (BRIDGE_URL to override target).
+// In-cluster (compiled to dist/tui.js via tsconfig.tui.json, shipped in the image):
+//   kubectl exec -n aura-bridge -it deploy/aura-bridge -- node dist/tui
+//   (note: namespace and deployment name may vary)
 import { createInterface } from 'node:readline/promises';
 
 const base = process.env.BRIDGE_URL ?? 'http://localhost:3000';

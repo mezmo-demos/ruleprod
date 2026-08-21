@@ -24,7 +24,7 @@ Slack ◀──Web API──── │              │         (real | sim)    
 - `aura/` — `AuraConnector` interface; `aura-http.ts` (completions SSE) and `aura-sim.ts` (canned thinking steps + filler text, no LLM). Swap via `AURA_MODE=real|sim` or admin API.
 - `outbound/` — Slack Web API, PagerDuty API clients.
 - `admin/` — localhost-only API: inject fake PD webhook, send test Slack messages/approvals, toggle sim.
-- `tools/tui.ts` — standalone TUI driving the admin API (localhost in dev, port-forward in cluster).
+- `tools/tui.ts` — standalone TUI driving the admin API. Local: `npm run tui -w @ruleprod/aura-bridge`. In-cluster: `kubectl exec -n aura-bridge -it deploy/aura-bridge -- node dist/tui` (note: namespace and deployment name may vary).
 
 Each layer is independently exercisable: test a Slack post without Aura, replay a PD webhook without an incident, run a full investigation against the simulator without tokens.
 
