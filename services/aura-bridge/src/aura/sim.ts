@@ -43,9 +43,12 @@ export class SimAuraConnector implements AuraConnector {
     if (runNumber > 1) {
       yield { kind: 'status', text: `Resuming session ${input.sessionId} (run ${runNumber}, ${input.messages.length} messages of history)` };
     }
+    let tokens = 0;
     for (const step of THINKING_STEPS) {
       await sleep(this.stepMs);
       yield { kind: 'status', text: step };
+      tokens += 4200;
+      yield { kind: 'usage', totalTokens: tokens };
     }
 
     let approvalNote = '';

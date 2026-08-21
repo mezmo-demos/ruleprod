@@ -91,16 +91,24 @@ export class InvestigationEngine {
   }
 
   /** Slack button click (or admin/TUI). Returns text describing what happened, for the message update. */
-  async handleApprovalAction(opts: { decisionId: string; userId: string; approved: boolean }): Promise<string> {
+  async handleApprovalAction(opts: {
+    decisionId: string;
+    userId: string;
+    userName?: string;
+    approved: boolean;
+  }): Promise<string> {
     const pending = this.pendingApprovals.get(opts.decisionId);
     const incident = pending ? this.deps.store.getIncident(pending.incidentId) : undefined;
     if (!authorizeApprover(opts.userId, incident)) {
       return 'You are not authorized to approve AURA actions for this incident.';
     }
+    // The reason lands in aura's transcript/logs — a handle reads better than
+    // a raw Slack id.
+    const approver = opts.userName ? `@${opts.userName} (${opts.userId})` : opts.userId;
     const resolved = await this.deps.connector().resolveApproval(
       opts.decisionId,
       opts.approved,
-      opts.approved ? undefined : `denied by ${opts.userId}`,
+      opts.approved ? undefined : `denied by ${approver}`,
     );
     if (!resolved) return 'This approval already expired or was resolved.';
     if (pending) {
@@ -174,24 +182,33 @@ export class InvestigationEngine {
 
     const startedAt = Date.now();
     let lastEdit = 0;
+    let latestStatus: string | undefined;
+    let tokensUsed = 0;
     let finalText: string | undefined;
     const connector = this.deps.connector();
+
+    const editStatus = async () => {
+      const now = Date.now();
+      if (now - lastEdit < this.deps.statusUpdateIntervalMs) return;
+      lastEdit = now;
+      await slack.updateMessage({
+        channel: statusMsg.channel,
+        ts: statusMsg.ts,
+        text: investigatingText(latestStatus, tokensUsed),
+      });
+    };
 
     try {
       for await (const ev of connector.run({ sessionId: req.incident.sessionId, messages })) {
         switch (ev.kind) {
-          case 'status': {
-            const now = Date.now();
-            if (now - lastEdit >= this.deps.statusUpdateIntervalMs) {
-              lastEdit = now;
-              await slack.updateMessage({
-                channel: statusMsg.channel,
-                ts: statusMsg.ts,
-                text: investigatingText(ev.text),
-              });
-            }
+          case 'status':
+            latestStatus = ev.text;
+            await editStatus();
             break;
-          }
+          case 'usage':
+            tokensUsed += ev.totalTokens;
+            await editStatus();
+            break;
           case 'approval_pending': {
             const posted = await slack.postMessage({
               channel: req.incident.channelId,
@@ -243,7 +260,7 @@ export class InvestigationEngine {
       await slack.updateMessage({
         channel: statusMsg.channel,
         ts: statusMsg.ts,
-        text: doneText(startedAt),
+        text: doneText(startedAt, tokensUsed),
       });
       store.addNode(req.incident, {
         parentId: req.parentNodeId,
@@ -271,18 +288,34 @@ export class InvestigationEngine {
   }
 }
 
-// Single line, rewritten in place — no accumulating content under it.
-function investigatingText(latest?: string): string {
-  const suffix = latest ? ` — _${truncate(latest, 140)}_` : '';
-  return `:mag: *AURA is investigating…*${suffix}`;
+// Single line, rewritten in place — no accumulating content under it. Elapsed
+// time and token spend keep it visibly alive between sparse events.
+// No clock here by design; totals land on the completion line. Token counts
+// appear mid-run only when aura reports them (today its orchestration mode
+// reports usage once, at stream end — so real runs usually show them only on
+// completion; the sim reports per-step).
+function investigatingText(latest?: string, tokensUsed = 0): string {
+  const parts = [`:mag: *AURA is investigating…*`];
+  if (latest) parts.push(`_${truncate(latest, 120)}_`);
+  if (tokensUsed > 0) parts.push(`~${formatTokens(tokensUsed)} tokens`);
+  return parts.join(' — ');
+}
+
+function elapsedText(startedAt: number): string {
+  const secs = Math.round((Date.now() - startedAt) / 1000);
+  return secs >= 60 ? `${Math.floor(secs / 60)}m ${secs % 60}s` : `${secs}s`;
+}
+
+function formatTokens(n: number): string {
+  return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
 }
 
 // No :white_check_mark: — it sits right next to the approval-resolved message,
 // which owns that emoji.
-function doneText(startedAt: number): string {
-  const secs = Math.round((Date.now() - startedAt) / 1000);
-  const elapsed = secs >= 60 ? `${Math.floor(secs / 60)}m ${secs % 60}s` : `${secs}s`;
-  return `:mag: *Investigation complete* (${elapsed}) — findings below.`;
+function doneText(startedAt: number, tokensUsed = 0): string {
+  const totals = [elapsedText(startedAt)];
+  if (tokensUsed > 0) totals.push(`~${formatTokens(tokensUsed)} tokens`);
+  return `:mag: *Investigation complete* (${totals.join(' · ')}) — findings below.`;
 }
 
 const truncate = (s: string, n: number) => (s.length > n ? `${s.slice(0, n)}…` : s);
