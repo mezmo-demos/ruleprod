@@ -187,19 +187,17 @@ export class InvestigationEngine {
     let finalText: string | undefined;
     const connector = this.deps.connector();
 
-    // Orchestration task board: one row per active actor, latest activity
-    // replaces the row, Done rows linger briefly then drop.
-    const board = new Map<string, { text: string; doneAt?: number }>();
-    const renderStatus = () => {
-      const now = Date.now();
-      for (const [key, row] of board) {
-        if (row.doneAt && now - row.doneAt > DONE_LINGER_MS) board.delete(key);
-      }
-      if (board.size === 0) return investigatingText(latestStatus, tokensUsed);
-      const rows = [...board.entries()]
+    // Orchestration task board: one row per actor, latest activity replaces the
+    // row. Done rows stay — the finished board doubles as the task log and
+    // survives on the completion edit.
+    const board = new Map<string, string>();
+    const boardRows = () =>
+      [...board.entries()]
         .sort(([a], [b]) => (a === 'coordinator' ? -1 : b === 'coordinator' ? 1 : a.localeCompare(b, undefined, { numeric: true })))
-        .map(([, row]) => `● ${row.text}`);
-      return [':mag: *AURA is working…*', ...rows].join('\n');
+        .map(([, text]) => `● ${text}`);
+    const renderStatus = () => {
+      if (board.size === 0) return investigatingText(latestStatus, tokensUsed);
+      return [':mag: *AURA is working…*', ...boardRows()].join('\n');
     };
     const editStatus = async (force = false) => {
       const now = Date.now();
@@ -219,19 +217,10 @@ export class InvestigationEngine {
             latestStatus = ev.text;
             await editStatus();
             break;
-          case 'board': {
-            board.set(ev.line.key, {
-              text: ev.line.text,
-              doneAt: ev.line.done ? Date.now() : undefined,
-            });
-            if (ev.line.done) {
-              // Nothing may arrive after Done — schedule the removal edit.
-              const t = setTimeout(() => void editStatus(true).catch(() => {}), DONE_LINGER_MS + 500);
-              t.unref?.();
-            }
+          case 'board':
+            board.set(ev.line.key, ev.line.text);
             await editStatus();
             break;
-          }
           case 'usage':
             tokensUsed += ev.totalTokens;
             await editStatus();
@@ -287,7 +276,7 @@ export class InvestigationEngine {
       await slack.updateMessage({
         channel: statusMsg.channel,
         ts: statusMsg.ts,
-        text: doneText(startedAt, tokensUsed),
+        text: [doneText(startedAt, tokensUsed), ...boardRows()].join('\n'),
       });
       store.addNode(req.incident, {
         parentId: req.parentNodeId,
@@ -315,10 +304,8 @@ export class InvestigationEngine {
   }
 }
 
-// Single line, rewritten in place — no accumulating content under it. Elapsed
-// time and token spend keep it visibly alive between sparse events.
-const DONE_LINGER_MS = 5_000;
-
+// Plain status (no board): single line, rewritten in place. Elapsed time and
+// token spend keep it visibly alive between sparse events.
 // No clock here by design; totals land on the completion line. Token counts
 // appear mid-run only when aura reports them (today its orchestration mode
 // reports usage once, at stream end — so real runs usually show them only on

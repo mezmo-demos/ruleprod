@@ -22,7 +22,7 @@ export interface BoardLine {
   key: string;
   /** Rendered row body, e.g. `Task 0 — github_analyst — SearchCode(page: 1)`. */
   text: string;
-  /** Row shows once more (briefly) and is then dropped from the board. */
+  /** Row is final; it stays on the board as the persistent task log. */
   done?: boolean;
 }
 
