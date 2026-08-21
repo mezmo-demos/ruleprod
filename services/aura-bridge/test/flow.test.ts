@@ -31,13 +31,13 @@ describe('InvestigationEngine', () => {
     expect(slack.joined).toContain('C1');
 
     const investigating = slack.posts[0];
-    expect(investigating?.text).toContain('investigating');
+    expect(investigating?.text).toContain('AURA is working');
     expect(slack.updates.length).toBeGreaterThan(0); // live status edits
     const final = slack.posts.at(-1);
     expect(final?.text).toContain('Root cause');
     // Completion line carries the totals: elapsed and token spend.
     const done = slack.updates.at(-1);
-    expect(done?.text).toContain('Investigation complete');
+    expect(done?.text).toContain('Response received');
     expect(done?.text).toContain('tokens');
 
     const incident = store.getIncident('P1');
