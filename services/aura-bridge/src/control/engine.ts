@@ -324,7 +324,7 @@ const DONE_LINGER_MS = 5_000;
 // reports usage once, at stream end — so real runs usually show them only on
 // completion; the sim reports per-step).
 function investigatingText(latest?: string, tokensUsed = 0): string {
-  const parts = [`:mag: *AURA is investigating…*`];
+  const parts = [`:mag: *AURA is working…*`];
   if (latest) parts.push(`_${truncate(latest, 120)}_`);
   if (tokensUsed > 0) parts.push(`~${formatTokens(tokensUsed)} tokens`);
   return parts.join(' — ');
@@ -344,7 +344,7 @@ function formatTokens(n: number): string {
 function doneText(startedAt: number, tokensUsed = 0): string {
   const totals = [elapsedText(startedAt)];
   if (tokensUsed > 0) totals.push(`~${formatTokens(tokensUsed)} tokens`);
-  return `:mag: *Investigation complete* (${totals.join(' · ')}) — findings below.`;
+  return `:mag: *Response received* (${totals.join(' · ')})`;
 }
 
 const truncate = (s: string, n: number) => (s.length > n ? `${s.slice(0, n)}…` : s);
