@@ -251,4 +251,58 @@ describe('InvestigationEngine', () => {
     const outcome = await engine.handleApprovalAction({ decisionId: 'ghost', userId: 'U1', approved: true });
     expect(outcome).toContain('expired');
   });
+
+  it('stop button aborts the run: stopped edit keeps the board, no answer, no store node', async () => {
+    const { store, slack, engine } = setup();
+    const run = engine.handlePdIncident({ incidentId: 'P6', channelId: 'C6', title: 'slow checkout' });
+    await until(() => engine.status().busy.includes('P6'));
+
+    const outcome = await engine.handleStopAction({ incidentId: 'P6', userId: 'U77' });
+    expect(outcome).toContain('Stopping');
+    await run;
+
+    // The status message carried a Stop button while live…
+    const statusPost = slack.posts.find((p) => p.text.includes('AURA is working'))!;
+    expect(JSON.stringify(statusPost.blocks)).toContain('aura_stop');
+    // …and the stopped edit drops it and credits the stopper.
+    const last = slack.updates.at(-1)!;
+    expect(last.text).toContain('Stopped* by <@U77>');
+    expect(JSON.stringify(last.blocks)).not.toContain('aura_stop');
+    // No answer posted, no conversation node recorded.
+    expect(slack.posts.some((p) => p.text.includes('Root cause'))).toBe(false);
+    expect(store.getIncident('P6')?.tipNodeId).toBeUndefined();
+    expect(engine.status().busy).toHaveLength(0);
+  });
+
+  it('stopping a run with a parked approval cancels the approval message', async () => {
+    const { slack, engine } = setup();
+    await engine.handlePdIncident({ incidentId: 'P7', channelId: 'C7' });
+    const run = engine.handleMention({ channelId: 'C7', text: 'check the node logs' });
+    await until(() => engine.status().pendingApprovals.length > 0);
+    const buttonPost = slack.posts.find((p) => p.blocks && p.text.includes('nodes_log'))!;
+
+    await engine.handleStopAction({ incidentId: 'P7', userId: 'U77' });
+    await run;
+
+    expect(engine.status().pendingApprovals).toHaveLength(0);
+    const buttonUpdate = slack.updates.find((u) => u.ts === buttonPost.ts)!;
+    expect(buttonUpdate.text).toContain('cancelled');
+    expect(slack.updates.some((u) => u.text.includes('Stopped* by'))).toBe(true);
+  });
+
+  it('completion edit removes the Stop button', async () => {
+    const { slack, engine } = setup();
+    await engine.handlePdIncident({ incidentId: 'P8', channelId: 'C8' });
+    const last = slack.updates.at(-1)!;
+    expect(last.text).toContain(':mag: *Done*');
+    expect(last.blocks).toBeDefined();
+    expect(JSON.stringify(last.blocks)).not.toContain('aura_stop');
+  });
+
+  it('stop with no active run reports so', async () => {
+    const { engine } = setup();
+    await engine.handlePdIncident({ incidentId: 'P9', channelId: 'C9' });
+    const outcome = await engine.handleStopAction({ incidentId: 'P9', userId: 'U1' });
+    expect(outcome).toContain('No AURA run is in progress');
+  });
 });

@@ -42,6 +42,10 @@ export type AuraEvent =
 export interface AuraRunInput {
   sessionId: string;
   messages: ChatMessage[];
+  /** Abort = the supported stop path: aura fail-closes on stream disconnect
+   * (cancels the run and its MCP calls, denies parked approvals). The run
+   * iterator then throws; the engine renders it as user-stopped. */
+  signal?: AbortSignal;
 }
 
 export interface AuraConnector {

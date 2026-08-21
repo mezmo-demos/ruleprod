@@ -34,6 +34,34 @@ export interface SlackPort {
   joinChannel(channelId: string): Promise<void>;
 }
 
+/** Live status message: board text plus a Stop control while the run is
+ * active. Every edit of the status message must resend blocks — chat.update
+ * keeps the previous blocks when the field is omitted, so a text-only edit
+ * would strand a stale Stop button on a finished run. */
+export function runStatusBlocks(opts: { text: string; stop?: { incidentId: string } }): unknown[] {
+  // Section blocks cap at 3000 chars; long boards split across sections.
+  const blocks: unknown[] = chunkLines(opts.text, 2900).map((text) => ({
+    type: 'section',
+    text: { type: 'mrkdwn', text },
+  }));
+  if (opts.stop) {
+    blocks.push({
+      type: 'actions',
+      block_id: 'aura_run',
+      elements: [
+        {
+          type: 'button',
+          style: 'danger',
+          text: { type: 'plain_text', text: 'Stop' },
+          action_id: 'aura_stop',
+          value: opts.stop.incidentId,
+        },
+      ],
+    });
+  }
+  return blocks;
+}
+
 export function approvalBlocks(opts: { decisionId: string; toolName: string; args: unknown }): unknown[] {
   return [
     {
@@ -164,3 +192,19 @@ export class RealSlack implements SlackPort {
 }
 
 const truncate = (s: string, n: number) => (s.length > n ? `${s.slice(0, n)}…` : s);
+
+function chunkLines(text: string, max: number): string[] {
+  const chunks: string[] = [];
+  let current = '';
+  for (const line of text.split('\n')) {
+    const candidate = current ? `${current}\n${line}` : line;
+    if (candidate.length > max && current) {
+      chunks.push(current);
+      current = truncate(line, max);
+    } else {
+      current = candidate.length > max ? truncate(candidate, max) : candidate;
+    }
+  }
+  if (current) chunks.push(current);
+  return chunks;
+}

@@ -1,6 +1,8 @@
 // Real aura connector over /v1/chat/completions SSE. Holds the stream open for
 // the life of the run — aura fail-closes on disconnect (cancels the run and
-// denies parked approvals), so never abort early except on caller error.
+// denies parked approvals), so never abort early except on caller error or a
+// deliberate stop: input.signal leans on exactly that fail-close as the cancel
+// mechanism (aura has no cancel endpoint).
 // Event mapping is defensive: aura.* payload shapes vary by event; unknown
 // events degrade to status lines rather than failing the run.
 import type { AuraConnector, AuraEvent, AuraRunInput } from './connector.js';
@@ -13,6 +15,7 @@ export class HttpAuraConnector implements AuraConnector {
   async *run(input: AuraRunInput): AsyncGenerator<AuraEvent, void, void> {
     const res = await fetch(`${this.baseUrl}/v1/chat/completions`, {
       method: 'POST',
+      signal: input.signal,
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         messages: input.messages,
