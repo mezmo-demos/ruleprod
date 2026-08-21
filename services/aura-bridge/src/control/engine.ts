@@ -3,7 +3,7 @@
 // the approval registry. Triggers stay thin; this is the only place that knows
 // the demo's message choreography.
 import type { FastifyBaseLogger } from 'fastify';
-import type { AuraConnector, ChatMessage } from '../aura/connector.js';
+import type { AuraConnector, BoardLine, ChatMessage } from '../aura/connector.js';
 import { markdownToMrkdwn } from '../outbound/mrkdwn.js';
 import { approvalBlocks, approvalResolvedBlocks, type SlackPort } from '../outbound/slack.js';
 import { authorizeApprover } from './approver.js';
@@ -187,16 +187,32 @@ export class InvestigationEngine {
     let finalText: string | undefined;
     const connector = this.deps.connector();
 
-    // Orchestration task board: one row per actor, latest activity replaces the
-    // row. Done rows stay — the finished board doubles as the task log and
-    // survives on the completion edit.
-    const board = new Map<string, string>();
-    const boardRows = () =>
-      [...board.entries()]
-        .sort(([a], [b]) => (a === 'coordinator' ? -1 : b === 'coordinator' ? 1 : a.localeCompare(b, undefined, { numeric: true })))
-        .map(([, text]) => `● ${text}`);
+    // Orchestration task board: a chronological log, not one-row-per-actor.
+    // Live rows update in place; done rows freeze. A returning actor gets a
+    // fresh row below — task ids restart at 0 on every replan wave, so a done
+    // `task-0` row is a prior wave's record, and each coordinator reappearance
+    // (replan, extra dispatch, synthesis) opens a new segment of the log.
+    const board: Array<{ key: string; text: string; done: boolean }> = [];
+    const applyBoard = (line: BoardLine) => {
+      if (line.key === 'coordinator') {
+        // Coordinator events arrive in bursts (plan_created → replan_started
+        // back-to-back): consecutive ones share a row, keeping the latest text.
+        const last = board.at(-1);
+        if (last?.key === 'coordinator') last.text = line.text;
+        else board.push({ key: line.key, text: line.text, done: false });
+        return;
+      }
+      const live = board.findLast((r) => r.key === line.key);
+      if (live && !live.done) {
+        live.text = line.text;
+        live.done = Boolean(line.done);
+      } else {
+        board.push({ key: line.key, text: line.text, done: Boolean(line.done) });
+      }
+    };
+    const boardRows = () => board.map((r) => `● ${r.text}`);
     const renderStatus = () => {
-      if (board.size === 0) return investigatingText(latestStatus, tokensUsed);
+      if (board.length === 0) return investigatingText(latestStatus, tokensUsed);
       return [':mag: *AURA is working…*', ...boardRows()].join('\n');
     };
     const editStatus = async (force = false) => {
@@ -218,7 +234,7 @@ export class InvestigationEngine {
             await editStatus();
             break;
           case 'board':
-            board.set(ev.line.key, ev.line.text);
+            applyBoard(ev.line);
             await editStatus();
             break;
           case 'usage':
@@ -331,7 +347,7 @@ function formatTokens(n: number): string {
 function doneText(startedAt: number, tokensUsed = 0): string {
   const totals = [elapsedText(startedAt)];
   if (tokensUsed > 0) totals.push(`~${formatTokens(tokensUsed)} tokens`);
-  return `:mag: *Response received* (${totals.join(' · ')})`;
+  return `:mag: *Done* (${totals.join(' · ')})`;
 }
 
 const truncate = (s: string, n: number) => (s.length > n ? `${s.slice(0, n)}…` : s);
