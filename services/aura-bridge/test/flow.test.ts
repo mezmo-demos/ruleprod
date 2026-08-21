@@ -152,6 +152,46 @@ describe('InvestigationEngine', () => {
     expect(slack.posts).toHaveLength(0);
   });
 
+  it('renders the task board from board events, dropping done rows', async () => {
+    const store = new IncidentStore();
+    const slack = new RecordingSlack();
+    const boardConnector = {
+      name: 'stub',
+      async *run() {
+        yield { kind: 'board', line: { key: 'coordinator', text: 'Coordinator — Plan — find leak' } } as const;
+        yield { kind: 'board', line: { key: 'task-0', text: 'Task 0 — github_analyst — Reasoning' } } as const;
+        yield { kind: 'board', line: { key: 'task-1', text: 'Task 1 — metrics_analyst — QueryPrometheus(expr: "up")' } } as const;
+        yield { kind: 'board', line: { key: 'task-0', text: 'Task 0 — github_analyst — Done', done: true } } as const;
+        yield { kind: 'final', text: 'answer' } as const;
+      },
+      async resolveApproval() {
+        return false;
+      },
+    };
+    const engine = new InvestigationEngine({
+      store,
+      slack,
+      connector: () => boardConnector,
+      logger: noopLogger,
+      statusUpdateIntervalMs: 0,
+      channelNamePattern: 'incident_{number}',
+      channelResolve: { attempts: 2, delayMs: 5 },
+    });
+    await engine.handlePdIncident({ incidentId: 'PB', channelId: 'CB' });
+
+    const boardEdits = slack.updates.filter((u) => u.text.includes('AURA is working'));
+    expect(boardEdits.length).toBeGreaterThanOrEqual(3);
+    const full = boardEdits.find((u) => u.text.includes('Task 1'))!;
+    // Coordinator row first, then tasks in order; one line each.
+    const lines = full.text.split('\n');
+    expect(lines[0]).toContain('AURA is working');
+    expect(lines.filter((l) => l.startsWith('● '))).toHaveLength(3);
+    expect(lines[1]).toContain('Coordinator');
+    // Done rows linger (within the 5s window here) and show Done.
+    const doneEdit = boardEdits.at(-1)!;
+    expect(doneEdit.text).toContain('github_analyst — Done');
+  });
+
   it('reports unknown decisions as expired', async () => {
     const { engine } = setup();
     const outcome = await engine.handleApprovalAction({ decisionId: 'ghost', userId: 'U1', approved: true });
