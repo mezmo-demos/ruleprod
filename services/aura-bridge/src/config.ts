@@ -15,6 +15,10 @@ export interface BridgeConfig {
    * this nor pdWebhookSecret set, webhooks are accepted unauthenticated
    * (local dev only). */
   pdWebhookToken?: string;
+  /** REST API key for enriching investigations with the incident's alert
+   * bodies. Unset = investigations start from the incident title alone. */
+  pdApiToken?: string;
+  pdApiBaseUrl: string;
   /** Unset = state is not persisted across restarts. */
   stateFile?: string;
   /** Min ms between edits of the "investigating" status message. */
@@ -40,6 +44,8 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env): BridgeConfi
     slackAppToken: env.SLACK_APP_TOKEN,
     pdWebhookSecret: env.PD_WEBHOOK_SECRET,
     pdWebhookToken: env.PD_WEBHOOK_TOKEN,
+    pdApiToken: env.PD_API_TOKEN,
+    pdApiBaseUrl: env.PD_API_URL ?? 'https://api.pagerduty.com',
     stateFile: env.STATE_FILE,
     statusUpdateIntervalMs: Number(env.STATUS_UPDATE_INTERVAL_MS ?? 2000),
     simStepMs: Number(env.SIM_STEP_MS ?? 1500),

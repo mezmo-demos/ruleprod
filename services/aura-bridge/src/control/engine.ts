@@ -5,6 +5,7 @@
 import type { FastifyBaseLogger } from 'fastify';
 import type { AuraConnector, ChatMessage } from '../aura/connector.js';
 import { markdownToMrkdwn } from '../outbound/mrkdwn.js';
+import type { PdApiPort } from '../outbound/pdapi.js';
 import { approvalBlocks, approvalResolvedBlocks, type SlackPort } from '../outbound/slack.js';
 import { authorizeApprover } from './approver.js';
 import { KeyedQueue } from './queue.js';
@@ -22,6 +23,8 @@ export interface EngineDeps {
   channelNamePattern: string;
   /** The PD webhook races the workflow's channel creation — retry the lookup. */
   channelResolve: { attempts: number; delayMs: number };
+  /** Unset = investigations start from the incident title alone. */
+  pdApi?: PdApiPort;
 }
 
 interface RunRequest {
@@ -70,7 +73,18 @@ export class InvestigationEngine {
       channelId,
       title: opts.title,
     });
-    const prompt = `Investigate PagerDuty incident ${incident.id}${incident.title ? `: "${incident.title}"` : ''}. Identify the root cause and impacted services; report specific resource names and evidence.`;
+    // fetchAlertDigest never throws — a PD hiccup degrades to title-only.
+    const digest = await this.deps.pdApi?.fetchAlertDigest(opts.incidentId);
+    if (digest) {
+      await this.deps.slack.postMessage({
+        channel: channelId,
+        text: `:rotating_light: *Alerts on this incident*\n${digest}`,
+      });
+    }
+    const header = `Investigate PagerDuty incident ${incident.id}${incident.title ? `: "${incident.title}"` : ''}.`;
+    const prompt = digest
+      ? `${header}\n\nAlert details from the monitoring system:\n${digest}\n\nIdentify the root cause and impacted services; report specific resource names and evidence.`
+      : `${header} Identify the root cause and impacted services; report specific resource names and evidence.`;
     return this.enqueue({ incident, prompt });
   }
 

@@ -5,6 +5,7 @@ import { SimAuraConnector } from './aura/sim.js';
 import { configFromEnv } from './config.js';
 import { InvestigationEngine } from './control/engine.js';
 import { IncidentStore } from './control/store.js';
+import { PdRestApi } from './outbound/pdapi.js';
 import { ConsoleSlack, RealSlack, type SlackPort } from './outbound/slack.js';
 import { startSlackTrigger, type StartedSlackTrigger } from './triggers/slack.js';
 import { buildServer } from './server.js';
@@ -31,6 +32,11 @@ const sim = new SimAuraConnector(config.simStepMs);
 const real = new HttpAuraConnector(config.auraUrl);
 let auraMode = config.auraMode;
 
+const pdApi = config.pdApiToken
+  ? new PdRestApi({ token: config.pdApiToken, baseUrl: config.pdApiBaseUrl, logger })
+  : undefined;
+if (!pdApi) logger.info('PD_API_TOKEN unset — investigations start from the incident title alone');
+
 const engine = new InvestigationEngine({
   store,
   slack,
@@ -39,6 +45,7 @@ const engine = new InvestigationEngine({
   statusUpdateIntervalMs: config.statusUpdateIntervalMs,
   channelNamePattern: config.channelNamePattern,
   channelResolve: { attempts: config.channelResolveAttempts, delayMs: config.channelResolveDelayMs },
+  pdApi,
 });
 
 const app = buildServer({
