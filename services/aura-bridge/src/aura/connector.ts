@@ -16,8 +16,20 @@ export interface ChatMessage {
   [key: string]: unknown;
 }
 
+/** One row of the live task board: keyed so later events replace the row. */
+export interface BoardLine {
+  /** 'coordinator' or 'task-<n>' — one row per active actor. */
+  key: string;
+  /** Rendered row body, e.g. `Task 0 — github_analyst — SearchCode(page: 1)`. */
+  text: string;
+  /** Row shows once more (briefly) and is then dropped from the board. */
+  done?: boolean;
+}
+
 export type AuraEvent =
   | { kind: 'status'; text: string }
+  /** Orchestration task-board row. When present, boards replace plain statuses. */
+  | { kind: 'board'; line: BoardLine }
   /** Per-LLM-call token snapshot — a liveness signal during quiet stretches. */
   | { kind: 'usage'; totalTokens: number }
   | { kind: 'approval_pending'; decisionId: string; toolName: string; args: unknown }

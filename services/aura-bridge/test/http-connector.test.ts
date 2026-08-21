@@ -3,7 +3,7 @@
 import Fastify from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { AuraEvent } from '../src/aura/connector.js';
-import { HttpAuraConnector, sseFrames } from '../src/aura/http.js';
+import { formatArgs, HttpAuraConnector, sseFrames } from '../src/aura/http.js';
 
 const SSE_BODY = [
   ': heartbeat',
@@ -13,6 +13,27 @@ const SSE_BODY = [
   '',
   'event: aura.progress',
   'data: {"message":"dispatching cluster_inspector"}',
+  '',
+  'event: aura.orchestrator.plan_created',
+  'data: {"goal":"Find the leak","task_count":2,"routing_mode":"orchestrated"}',
+  '',
+  'event: aura.orchestrator.task_started',
+  'data: {"task_id":0,"description":"Diff recent commits","worker_id":"github_analyst"}',
+  '',
+  'event: aura.orchestrator.worker_reasoning',
+  'data: {"task_id":0,"worker_id":"github_analyst","content":"secret reasoning words"}',
+  '',
+  'event: aura.orchestrator.tool_call_started',
+  'data: {"task_id":0,"tool_call_id":"tc1","tool_name":"SearchCode","worker_id":"github_analyst","arguments":{"order":"desc","page":1,"query":"a very long search query string"}}',
+  '',
+  'event: aura.orchestrator.tool_call_completed',
+  'data: {"task_id":0,"tool_call_id":"tc1","success":true,"duration_ms":93}',
+  '',
+  'event: aura.orchestrator.task_completed',
+  'data: {"task_id":0,"success":true,"duration_ms":61600,"worker_id":"github_analyst"}',
+  '',
+  'event: aura.orchestrator.synthesizing',
+  'data: {"iteration":1}',
   '',
   'data: {"choices":[{"delta":{"content":"Root cause: "}}]}',
   '',
@@ -40,9 +61,9 @@ describe('sseFrames', () => {
     });
     const frames = [];
     for await (const frame of sseFrames(stream)) frames.push(frame);
-    expect(frames).toHaveLength(7);
+    expect(frames).toHaveLength(14);
     expect(frames[0]).toEqual({ event: 'aura.session_info', data: '{"session_id":"cs_1"}' });
-    expect(frames[2]?.event).toBeUndefined();
+    expect(frames[9]?.event).toBeUndefined(); // the bare chat.completion.chunk
     expect(frames.at(-1)?.data).toBe('[DONE]');
   });
 });
@@ -76,6 +97,21 @@ describe('HttpAuraConnector', () => {
     }
     expect(events).toEqual([
       { kind: 'status', text: 'dispatching cluster_inspector' },
+      { kind: 'board', line: { key: 'coordinator', text: 'Coordinator — Plan — Find the leak', done: false } },
+      { kind: 'board', line: { key: 'task-0', text: 'Task 0 — github_analyst — Diff recent commits', done: false } },
+      // Reasoning marker only — never the reasoning words.
+      { kind: 'board', line: { key: 'task-0', text: 'Task 0 — github_analyst — Reasoning', done: false } },
+      {
+        kind: 'board',
+        line: {
+          key: 'task-0',
+          text: 'Task 0 — github_analyst — SearchCode(order: "desc", page: 1, query: "a very long searc…")',
+          done: false,
+        },
+      },
+      // tool_call_completed intentionally dropped (no completion timings).
+      { kind: 'board', line: { key: 'task-0', text: 'Task 0 — github_analyst — Done', done: true } },
+      { kind: 'board', line: { key: 'coordinator', text: 'Coordinator — Synthesizing', done: false } },
       { kind: 'approval_pending', decisionId: 'dec_1', toolName: 'nodes_log', args: { name: 'node-a' } },
       { kind: 'approval_completed', decisionId: 'dec_1', outcome: 'approved' },
       { kind: 'final', text: 'Root cause: OOM in cart.' },
@@ -87,6 +123,13 @@ describe('HttpAuraConnector', () => {
     expect(await connector.resolveApproval('dec_1', false, 'nope')).toBe(true);
     expect(approvalBody).toEqual({ approved: false, reason: 'nope' });
     expect(await connector.resolveApproval('unknown', true)).toBe(false);
+  });
+
+  it('formats tool args compactly', () => {
+    expect(formatArgs({ order: 'desc', page: 1, deep: { a: 1 } })).toBe('order: "desc", page: 1, deep: {"a":1}');
+    expect(formatArgs({ q: 'this string is much longer than seventeen chars' })).toBe('q: "this string is mu…"');
+    expect(formatArgs({ a: 1, b: 2, c: 3, d: 4, e: 5 })).toBe('a: 1, b: 2, c: 3, d: 4, …');
+    expect(formatArgs(undefined)).toBe('');
   });
 
   it('yields an error event on non-2xx', async () => {

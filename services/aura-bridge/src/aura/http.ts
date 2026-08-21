@@ -98,17 +98,56 @@ function mapAuraEvent(event: string, p: Record<string, unknown>): AuraEvent | un
       return Number.isFinite(total) && total > 0 ? { kind: 'usage', totalTokens: total } : undefined;
     }
     default:
-      if (event === 'aura.orchestrator.worker_reasoning') return undefined; // delta noise
-      if (event.startsWith('aura.orchestrator.')) {
-        const phase = event.slice('aura.orchestrator.'.length).replaceAll('_', ' ');
-        const detail = str(
-          p.message ?? p.summary ?? p.goal ?? p.description ?? p.task ?? p.phase ?? p.worker,
-          '',
-        );
-        return { kind: 'status', text: detail ? `${phase}: ${truncate(detail, 120)}` : phase };
-      }
+      if (event.startsWith('aura.orchestrator.')) return mapOrchestratorEvent(event, p);
       return undefined; // session_info, usage, mcp_status, ... — not user-facing
   }
+}
+
+// Task-board rows: one per active actor, later events replace earlier rows.
+// One generic formatter over the payload shapes in aura-events orchestration.rs
+// — no per-event-type prose.
+function mapOrchestratorEvent(event: string, p: Record<string, unknown>): AuraEvent | undefined {
+  const taskKey = () => (p.task_id === undefined || p.task_id === null ? 'coordinator' : `task-${p.task_id}`);
+  const taskLabel = () =>
+    p.task_id === undefined || p.task_id === null
+      ? 'Coordinator'
+      : `Task ${p.task_id} — ${str(p.worker_id, 'worker')}`;
+  const row = (text: string, done = false): AuraEvent => ({ kind: 'board', line: { key: taskKey(), text, done } });
+
+  switch (event.slice('aura.orchestrator.'.length)) {
+    case 'plan_created':
+      return row(`Coordinator — Plan — ${truncate(str(p.goal, ''), 160)}`);
+    case 'direct_answer':
+      return row('Coordinator — Answering directly');
+    case 'replan_started':
+      return row(`Coordinator — Replanning — ${truncate(str(p.trigger, ''), 120)}`);
+    case 'synthesizing':
+      return row('Coordinator — Synthesizing');
+    case 'task_started':
+      return row(`${taskLabel()} — ${truncate(str(p.description, 'starting'), 120)}`);
+    case 'worker_reasoning':
+      // Just the marker — never the reasoning words.
+      return row(`${taskLabel()} — Reasoning`);
+    case 'tool_call_started':
+      return row(`${taskLabel()} — ${str(p.tool_name, '?')}(${formatArgs(p.arguments)})`);
+    case 'task_completed':
+      return row(`${taskLabel()} — ${p.success === false ? 'Failed' : 'Done'}`, true);
+    default:
+      return undefined; // tool_call_completed (no timings), iteration/phase bookkeeping
+  }
+}
+
+/** `{a: "long value", b: 2}` → `a: "long val…", b: 2` — capped per value and overall. */
+export function formatArgs(args: unknown): string {
+  if (args === null || args === undefined || typeof args !== 'object' || Array.isArray(args)) return '';
+  const entries = Object.entries(args as Record<string, unknown>);
+  const parts = entries.slice(0, 4).map(([k, v]) => {
+    if (typeof v === 'string') return `${k}: "${truncate(v, 17)}"`;
+    if (typeof v === 'number' || typeof v === 'boolean') return `${k}: ${v}`;
+    return `${k}: ${truncate(JSON.stringify(v) ?? '?', 17)}`;
+  });
+  if (entries.length > 4) parts.push('…');
+  return truncate(parts.join(', '), 110);
 }
 
 function outcomeText(outcome: unknown): string {
