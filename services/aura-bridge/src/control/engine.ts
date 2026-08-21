@@ -3,10 +3,10 @@
 // the approval registry. Triggers stay thin; this is the only place that knows
 // the demo's message choreography.
 import type { FastifyBaseLogger } from 'fastify';
-import type { AuraConnector, ChatMessage } from '../aura/connector.js';
+import type { AuraConnector, BoardLine, ChatMessage } from '../aura/connector.js';
 import { markdownToMrkdwn } from '../outbound/mrkdwn.js';
-import { approvalBlocks, approvalResolvedBlocks, type SlackPort } from '../outbound/slack.js';
-import { authorizeApprover } from './approver.js';
+import { approvalBlocks, approvalResolvedBlocks, runStatusBlocks, type SlackPort } from '../outbound/slack.js';
+import { authorizeButton } from './approver.js';
 import { KeyedQueue } from './queue.js';
 import type { Incident, IncidentStore } from './store.js';
 
@@ -40,9 +40,18 @@ interface PendingApproval {
   incidentId: string;
 }
 
+interface ActiveRun {
+  controller: AbortController;
+  /** Set by handleStopAction before aborting — how the catch path tells a
+   * user-stop from a real failure. */
+  stoppedBy?: string;
+}
+
 export class InvestigationEngine {
   private queue = new KeyedQueue();
   private pendingApprovals = new Map<string, PendingApproval>();
+  /** At most one per incident — the KeyedQueue serializes runs. */
+  private activeRuns = new Map<string, ActiveRun>();
 
   constructor(private deps: EngineDeps) {}
 
@@ -99,7 +108,7 @@ export class InvestigationEngine {
   }): Promise<string> {
     const pending = this.pendingApprovals.get(opts.decisionId);
     const incident = pending ? this.deps.store.getIncident(pending.incidentId) : undefined;
-    if (!authorizeApprover(opts.userId, incident)) {
+    if (!authorizeButton(opts.approved ? 'approve' : 'deny', opts.userId, incident)) {
       return 'You are not authorized to approve AURA actions for this incident.';
     }
     // The reason lands in aura's transcript/logs — a handle reads better than
@@ -125,6 +134,22 @@ export class InvestigationEngine {
       });
     }
     return opts.approved ? 'Approved — AURA is continuing.' : 'Denied — AURA will stop that action.';
+  }
+
+  /** Stop button click (or admin/TUI). Aborts the incident's active run; the
+   * run's own catch path renders the stopped board and cleans up approvals.
+   * Returns text describing what happened. */
+  async handleStopAction(opts: { incidentId: string; userId: string; userName?: string }): Promise<string> {
+    const incident = this.deps.store.getIncident(opts.incidentId);
+    if (!authorizeButton('stop', opts.userId, incident)) {
+      return 'You are not authorized to stop AURA runs for this incident.';
+    }
+    const run = this.activeRuns.get(opts.incidentId);
+    if (!run) return 'No AURA run is in progress for this incident.';
+    if (run.stoppedBy) return 'Already stopping.';
+    run.stoppedBy = opts.userId;
+    run.controller.abort();
+    return 'Stopping — AURA is cancelling this run.';
   }
 
   status(): { incidents: number; pendingApprovals: string[]; busy: string[] } {
@@ -174,11 +199,16 @@ export class InvestigationEngine {
   private async execute(req: RunRequest): Promise<void> {
     const { slack, store, logger } = this.deps;
     const messages = this.buildMessages(req);
+    const run: ActiveRun = { controller: new AbortController() };
+    const stop = { incidentId: req.incident.id };
     const statusMsg = await slack.postMessage({
       channel: req.incident.channelId,
       threadTs: req.threadTs,
       text: investigatingText(),
+      blocks: runStatusBlocks({ text: investigatingText(), stop }),
     });
+    // Registered only once the status message (and its Stop button) exists.
+    this.activeRuns.set(req.incident.id, run);
 
     const startedAt = Date.now();
     let lastEdit = 0;
@@ -187,38 +217,60 @@ export class InvestigationEngine {
     let finalText: string | undefined;
     const connector = this.deps.connector();
 
-    // Orchestration task board: one row per actor, latest activity replaces the
-    // row. Done rows stay — the finished board doubles as the task log and
-    // survives on the completion edit.
-    const board = new Map<string, string>();
-    const boardRows = () =>
-      [...board.entries()]
-        .sort(([a], [b]) => (a === 'coordinator' ? -1 : b === 'coordinator' ? 1 : a.localeCompare(b, undefined, { numeric: true })))
-        .map(([, text]) => `● ${text}`);
+    // Orchestration task board: a chronological log, not one-row-per-actor.
+    // Live rows update in place; done rows freeze. A returning actor gets a
+    // fresh row below — task ids restart at 0 on every replan wave, so a done
+    // `task-0` row is a prior wave's record, and each coordinator reappearance
+    // (replan, extra dispatch, synthesis) opens a new segment of the log.
+    const board: Array<{ key: string; text: string; done: boolean }> = [];
+    const applyBoard = (line: BoardLine) => {
+      if (line.key === 'coordinator') {
+        // Coordinator events arrive in bursts (plan_created → replan_started
+        // back-to-back): consecutive ones share a row, keeping the latest text.
+        const last = board.at(-1);
+        if (last?.key === 'coordinator') last.text = line.text;
+        else board.push({ key: line.key, text: line.text, done: false });
+        return;
+      }
+      const live = board.findLast((r) => r.key === line.key);
+      if (live && !live.done) {
+        live.text = line.text;
+        live.done = Boolean(line.done);
+      } else {
+        board.push({ key: line.key, text: line.text, done: Boolean(line.done) });
+      }
+    };
+    const boardRows = () => board.map((r) => `● ${r.text}`);
     const renderStatus = () => {
-      if (board.size === 0) return investigatingText(latestStatus, tokensUsed);
+      if (board.length === 0) return investigatingText(latestStatus, tokensUsed);
       return [':mag: *AURA is working…*', ...boardRows()].join('\n');
     };
     const editStatus = async (force = false) => {
       const now = Date.now();
       if (!force && now - lastEdit < this.deps.statusUpdateIntervalMs) return;
       lastEdit = now;
+      const text = renderStatus();
       await slack.updateMessage({
         channel: statusMsg.channel,
         ts: statusMsg.ts,
-        text: renderStatus(),
+        text,
+        blocks: runStatusBlocks({ text, stop }),
       });
     };
 
     try {
-      for await (const ev of connector.run({ sessionId: req.incident.sessionId, messages })) {
+      for await (const ev of connector.run({
+        sessionId: req.incident.sessionId,
+        messages,
+        signal: run.controller.signal,
+      })) {
         switch (ev.kind) {
           case 'status':
             latestStatus = ev.text;
             await editStatus();
             break;
           case 'board':
-            board.set(ev.line.key, ev.line.text);
+            applyBoard(ev.line);
             await editStatus();
             break;
           case 'usage':
@@ -273,10 +325,13 @@ export class InvestigationEngine {
         threadTs: req.threadTs,
         text: markdownToMrkdwn(finalText),
       });
+      const summary = [doneText(startedAt, tokensUsed), ...boardRows()].join('\n');
       await slack.updateMessage({
         channel: statusMsg.channel,
         ts: statusMsg.ts,
-        text: [doneText(startedAt, tokensUsed), ...boardRows()].join('\n'),
+        text: summary,
+        // blocks without `stop` — this edit is what removes the Stop button.
+        blocks: runStatusBlocks({ text: summary }),
       });
       store.addNode(req.incident, {
         parentId: req.parentNodeId,
@@ -286,11 +341,37 @@ export class InvestigationEngine {
         mainLine: !req.threadTs,
       });
     } catch (err) {
-      logger.error({ err, incident: req.incident.id }, 'investigation failed');
+      const text = run.stoppedBy
+        ? [stoppedText(run.stoppedBy, startedAt, tokensUsed), ...boardRows()].join('\n')
+        : `:x: AURA investigation failed: ${(err as Error).message}`;
+      if (run.stoppedBy) {
+        logger.info({ incident: req.incident.id, stoppedBy: run.stoppedBy }, 'investigation stopped');
+      } else {
+        logger.error({ err, incident: req.incident.id }, 'investigation failed');
+      }
       await slack.updateMessage({
         channel: statusMsg.channel,
         ts: statusMsg.ts,
-        text: `:x: AURA investigation failed: ${(err as Error).message}`,
+        text,
+        blocks: runStatusBlocks({ text }),
+      });
+      // Aura denies parked approvals on disconnect, but the stream is gone —
+      // no approval_completed will arrive, so resolve their messages here.
+      await this.cancelPendingApprovals(req.incident.id);
+    } finally {
+      this.activeRuns.delete(req.incident.id);
+    }
+  }
+
+  private async cancelPendingApprovals(incidentId: string): Promise<void> {
+    for (const [decisionId, pending] of this.pendingApprovals) {
+      if (pending.incidentId !== incidentId) continue;
+      this.pendingApprovals.delete(decisionId);
+      await this.deps.slack.updateMessage({
+        channel: pending.channel,
+        ts: pending.ts,
+        text: `\`${pending.toolName}\` cancelled — run ended`,
+        blocks: approvalResolvedBlocks({ toolName: pending.toolName, outcome: 'cancelled' }),
       });
     }
   }
@@ -331,7 +412,13 @@ function formatTokens(n: number): string {
 function doneText(startedAt: number, tokensUsed = 0): string {
   const totals = [elapsedText(startedAt)];
   if (tokensUsed > 0) totals.push(`~${formatTokens(tokensUsed)} tokens`);
-  return `:mag: *Response received* (${totals.join(' · ')})`;
+  return `:mag: *Done* (${totals.join(' · ')})`;
+}
+
+function stoppedText(userId: string, startedAt: number, tokensUsed = 0): string {
+  const totals = [elapsedText(startedAt)];
+  if (tokensUsed > 0) totals.push(`~${formatTokens(tokensUsed)} tokens`);
+  return `:octagonal_sign: *Stopped* by <@${userId}> (${totals.join(' · ')})`;
 }
 
 const truncate = (s: string, n: number) => (s.length > n ? `${s.slice(0, n)}…` : s);

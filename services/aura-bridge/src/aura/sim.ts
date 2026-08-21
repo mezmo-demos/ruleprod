@@ -45,7 +45,7 @@ export class SimAuraConnector implements AuraConnector {
     }
     let tokens = 0;
     for (const step of THINKING_STEPS) {
-      await sleep(this.stepMs);
+      await sleep(this.stepMs, input.signal);
       yield { kind: 'status', text: step };
       tokens += 4200;
       yield { kind: 'usage', totalTokens: tokens };
@@ -55,18 +55,18 @@ export class SimAuraConnector implements AuraConnector {
     if (APPROVAL_TRIGGER.test(prompt)) {
       const decisionId = `sim-decision-${++this.decisionCounter}`;
       yield { kind: 'approval_pending', decisionId, toolName: 'nodes_log', args: { name: 'ip-10-0-1-23.ec2.internal', query: ['kubelet'] } };
-      const approved = await this.awaitDecision(decisionId);
+      const approved = await this.awaitDecision(decisionId, input.signal);
       yield { kind: 'approval_completed', decisionId, outcome: approved ? 'approved' : 'denied' };
       if (!approved) {
         yield { kind: 'final', text: `The \`nodes_log\` call was denied, so I stopped there.\n\n${pick(FINDINGS, runNumber)}\n\n_(simulated response, run ${runNumber})_` };
         return;
       }
-      await sleep(this.stepMs);
+      await sleep(this.stepMs, input.signal);
       yield { kind: 'status', text: 'cluster_inspector: reading kubelet logs from approved node' };
       approvalNote = 'Node kubelet logs confirm the container restarts line up with memory-cgroup OOM events.\n\n';
     }
 
-    await sleep(this.stepMs);
+    await sleep(this.stepMs, input.signal);
     yield {
       kind: 'final',
       text: `${approvalNote}${pick(FINDINGS, runNumber)}\n\nSuggested next step: raise the memory limit or fix the leak; happy to dig further.\n\n_(simulated response, run ${runNumber}, prompt was: "${truncate(prompt, 120)}")_`,
@@ -81,16 +81,26 @@ export class SimAuraConnector implements AuraConnector {
     return true;
   }
 
-  private awaitDecision(decisionId: string): Promise<boolean> {
-    return new Promise((resolve) => {
+  // Mirrors real aura, where a stream abort denies parked approvals: the run
+  // dies with the abort reason instead of resolving the decision.
+  private awaitDecision(decisionId: string, signal?: AbortSignal): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+      if (signal?.aborted) return reject(abortError(signal));
       const timer = setTimeout(() => {
         this.pending.delete(decisionId);
         resolve(false);
       }, APPROVAL_TIMEOUT_MS);
       timer.unref?.();
+      const onAbort = () => {
+        clearTimeout(timer);
+        this.pending.delete(decisionId);
+        reject(abortError(signal!));
+      };
+      signal?.addEventListener('abort', onAbort, { once: true });
       this.pending.set(decisionId, {
         resolve: (approved) => {
           clearTimeout(timer);
+          signal?.removeEventListener('abort', onAbort);
           resolve(approved);
         },
       });
@@ -98,6 +108,21 @@ export class SimAuraConnector implements AuraConnector {
   }
 }
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const abortError = (signal: AbortSignal): Error =>
+  signal.reason instanceof Error ? signal.reason : new Error('aborted');
+
+const sleep = (ms: number, signal?: AbortSignal) =>
+  new Promise<void>((resolve, reject) => {
+    if (signal?.aborted) return reject(abortError(signal));
+    const timer = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(abortError(signal!));
+    };
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
 const pick = <T>(arr: T[], seed: number): T => arr[seed % arr.length] as T;
 const truncate = (s: string, n: number) => (s.length > n ? `${s.slice(0, n)}…` : s);

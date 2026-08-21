@@ -44,6 +44,17 @@ export async function startSlackTrigger(deps: SlackTriggerDeps): Promise<Started
       .catch((err) => deps.logger.error({ err }, 'approval action failed'));
   });
 
+  app.action('aura_stop', async ({ ack, action, body }) => {
+    await ack();
+    if (action.type !== 'button') return;
+    const userId = body.user.id;
+    const userName = 'username' in body.user ? body.user.username : body.user.name;
+    // Feedback is the status message itself flipping to "Stopped by".
+    void deps.engine
+      .handleStopAction({ incidentId: action.value ?? '', userId, userName })
+      .catch((err) => deps.logger.error({ err }, 'stop action failed'));
+  });
+
   await app.start();
   deps.logger.info('slack socket mode connected');
   return {

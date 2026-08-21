@@ -35,6 +35,7 @@ aura-bridge TUI (${base})
   5) send test Slack message
   6) send test approval buttons
   7) decide a pending approval
+  8) stop the active run for an incident
   q) quit
 `;
 
@@ -83,6 +84,11 @@ async function main(): Promise<void> {
           const decisionId = (await rl.question('decision id: ')).trim();
           const approved = (await rl.question('approve? [y/N]: ')).trim().toLowerCase() === 'y';
           show(await api('POST', '/admin/approval/decide', { decisionId, approved }));
+          break;
+        }
+        case '8': {
+          const incidentId = (await rl.question('incident id (see status "busy"): ')).trim();
+          show(await api('POST', '/admin/stop', { incidentId }));
           break;
         }
         case 'q':

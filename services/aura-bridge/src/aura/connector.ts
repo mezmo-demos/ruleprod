@@ -16,9 +16,11 @@ export interface ChatMessage {
   [key: string]: unknown;
 }
 
-/** One row of the live task board: keyed so later events replace the row. */
+/** One row of the live task board: keyed so later events update the actor's
+ * live row. Done rows freeze — a later event with the same key (replan waves
+ * reuse task ids from 0) starts a new row, so the board reads chronologically. */
 export interface BoardLine {
-  /** 'coordinator' or 'task-<n>' — one row per active actor. */
+  /** 'coordinator' or 'task-<n>' — the actor this event belongs to. */
   key: string;
   /** Rendered row body, e.g. `Task 0 — github_analyst — SearchCode(page: 1)`. */
   text: string;
@@ -40,6 +42,10 @@ export type AuraEvent =
 export interface AuraRunInput {
   sessionId: string;
   messages: ChatMessage[];
+  /** Abort = the supported stop path: aura fail-closes on stream disconnect
+   * (cancels the run and its MCP calls, denies parked approvals). The run
+   * iterator then throws; the engine renders it as user-stopped. */
+  signal?: AbortSignal;
 }
 
 export interface AuraConnector {

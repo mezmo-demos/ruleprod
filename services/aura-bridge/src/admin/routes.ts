@@ -100,6 +100,16 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminDeps): void
     });
   });
 
+  // Stop the incident's active run without Slack (TUI in console mode).
+  app.post<{ Body: { incidentId?: string } }>('/admin/stop', async (request, reply) => {
+    const incidentId = request.body?.incidentId;
+    if (!incidentId) {
+      return reply.status(400).send({ error: { code: 'invalid_request', message: 'incidentId required' } });
+    }
+    const outcome = await deps.engine.handleStopAction({ incidentId, userId: 'admin-tui' });
+    return { outcome };
+  });
+
   // Answer a pending approval without Slack (TUI in console mode).
   app.post<{ Body: { decisionId?: string; approved?: boolean } }>(
     '/admin/approval/decide',

@@ -37,7 +37,7 @@ describe('InvestigationEngine', () => {
     expect(final?.text).toContain('Root cause');
     // Completion line carries the totals: elapsed and token spend.
     const done = slack.updates.at(-1);
-    expect(done?.text).toContain('Response received');
+    expect(done?.text).toContain('Done');
     expect(done?.text).toContain('tokens');
 
     const incident = store.getIncident('P1');
@@ -191,14 +191,118 @@ describe('InvestigationEngine', () => {
     const doneEdit = boardEdits.at(-1)!;
     expect(doneEdit.text).toContain('github_analyst — Done');
     const finalEdit = slack.updates.at(-1)!;
-    expect(finalEdit.text).toContain('Response received');
+    expect(finalEdit.text).toContain(':mag: *Done*');
     expect(finalEdit.text).toContain('github_analyst — Done');
     expect(finalEdit.text).toContain('Task 1');
+  });
+
+  it('keeps the board chronological across replans: done rows freeze, returning actors get new rows', async () => {
+    const store = new IncidentStore();
+    const slack = new RecordingSlack();
+    const replanConnector = {
+      name: 'stub',
+      async *run() {
+        yield { kind: 'board', line: { key: 'coordinator', text: 'Coordinator — Plan — find leak' } } as const;
+        yield { kind: 'board', line: { key: 'task-0', text: 'Task 0 — incident_responder — Reasoning' } } as const;
+        yield { kind: 'board', line: { key: 'task-1', text: 'Task 1 — metrics_analyst — Reasoning' } } as const;
+        yield { kind: 'board', line: { key: 'task-0', text: 'Task 0 — incident_responder — Done', done: true } } as const;
+        // Replan: aura emits plan_created for the new plan, then replan_started —
+        // consecutive coordinator events share one row (latest text wins).
+        yield { kind: 'board', line: { key: 'coordinator', text: 'Coordinator — Plan — narrower goal' } } as const;
+        yield { kind: 'board', line: { key: 'coordinator', text: 'Coordinator — Replanning — gaps found' } } as const;
+        // Straggler from wave 1 finishes after the replan row appeared: its live
+        // row (above the replan) updates in place.
+        yield { kind: 'board', line: { key: 'task-1', text: 'Task 1 — metrics_analyst — Done', done: true } } as const;
+        // New wave reuses task id 0 — must get a fresh row, not revive wave 1's.
+        yield { kind: 'board', line: { key: 'task-0', text: 'Task 0 — cluster_inspector — Reasoning' } } as const;
+        yield { kind: 'board', line: { key: 'task-0', text: 'Task 0 — cluster_inspector — Done', done: true } } as const;
+        yield { kind: 'board', line: { key: 'coordinator', text: 'Coordinator — Answering directly' } } as const;
+        yield { kind: 'final', text: 'answer' } as const;
+      },
+      async resolveApproval() {
+        return false;
+      },
+    };
+    const engine = new InvestigationEngine({
+      store,
+      slack,
+      connector: () => replanConnector,
+      logger: noopLogger,
+      statusUpdateIntervalMs: 0,
+      channelNamePattern: 'incident_{number}',
+      channelResolve: { attempts: 2, delayMs: 5 },
+    });
+    await engine.handlePdIncident({ incidentId: 'PR', channelId: 'CR' });
+
+    const finalEdit = slack.updates.at(-1)!;
+    const rows = finalEdit.text.split('\n').filter((l) => l.startsWith('● '));
+    expect(rows).toEqual([
+      '● Coordinator — Plan — find leak',
+      '● Task 0 — incident_responder — Done',
+      '● Task 1 — metrics_analyst — Done',
+      '● Coordinator — Replanning — gaps found',
+      '● Task 0 — cluster_inspector — Done',
+      '● Coordinator — Answering directly',
+    ]);
   });
 
   it('reports unknown decisions as expired', async () => {
     const { engine } = setup();
     const outcome = await engine.handleApprovalAction({ decisionId: 'ghost', userId: 'U1', approved: true });
     expect(outcome).toContain('expired');
+  });
+
+  it('stop button aborts the run: stopped edit keeps the board, no answer, no store node', async () => {
+    const { store, slack, engine } = setup();
+    const run = engine.handlePdIncident({ incidentId: 'P6', channelId: 'C6', title: 'slow checkout' });
+    await until(() => engine.status().busy.includes('P6'));
+
+    const outcome = await engine.handleStopAction({ incidentId: 'P6', userId: 'U77' });
+    expect(outcome).toContain('Stopping');
+    await run;
+
+    // The status message carried a Stop button while live…
+    const statusPost = slack.posts.find((p) => p.text.includes('AURA is working'))!;
+    expect(JSON.stringify(statusPost.blocks)).toContain('aura_stop');
+    // …and the stopped edit drops it and credits the stopper.
+    const last = slack.updates.at(-1)!;
+    expect(last.text).toContain('Stopped* by <@U77>');
+    expect(JSON.stringify(last.blocks)).not.toContain('aura_stop');
+    // No answer posted, no conversation node recorded.
+    expect(slack.posts.some((p) => p.text.includes('Root cause'))).toBe(false);
+    expect(store.getIncident('P6')?.tipNodeId).toBeUndefined();
+    expect(engine.status().busy).toHaveLength(0);
+  });
+
+  it('stopping a run with a parked approval cancels the approval message', async () => {
+    const { slack, engine } = setup();
+    await engine.handlePdIncident({ incidentId: 'P7', channelId: 'C7' });
+    const run = engine.handleMention({ channelId: 'C7', text: 'check the node logs' });
+    await until(() => engine.status().pendingApprovals.length > 0);
+    const buttonPost = slack.posts.find((p) => p.blocks && p.text.includes('nodes_log'))!;
+
+    await engine.handleStopAction({ incidentId: 'P7', userId: 'U77' });
+    await run;
+
+    expect(engine.status().pendingApprovals).toHaveLength(0);
+    const buttonUpdate = slack.updates.find((u) => u.ts === buttonPost.ts)!;
+    expect(buttonUpdate.text).toContain('cancelled');
+    expect(slack.updates.some((u) => u.text.includes('Stopped* by'))).toBe(true);
+  });
+
+  it('completion edit removes the Stop button', async () => {
+    const { slack, engine } = setup();
+    await engine.handlePdIncident({ incidentId: 'P8', channelId: 'C8' });
+    const last = slack.updates.at(-1)!;
+    expect(last.text).toContain(':mag: *Done*');
+    expect(last.blocks).toBeDefined();
+    expect(JSON.stringify(last.blocks)).not.toContain('aura_stop');
+  });
+
+  it('stop with no active run reports so', async () => {
+    const { engine } = setup();
+    await engine.handlePdIncident({ incidentId: 'P9', channelId: 'C9' });
+    const outcome = await engine.handleStopAction({ incidentId: 'P9', userId: 'U1' });
+    expect(outcome).toContain('No AURA run is in progress');
   });
 });
