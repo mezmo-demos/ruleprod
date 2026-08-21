@@ -152,7 +152,7 @@ describe('InvestigationEngine', () => {
     expect(slack.posts).toHaveLength(0);
   });
 
-  it('renders the task board from board events, dropping done rows', async () => {
+  it('renders the task board from board events, keeping done rows as a log', async () => {
     const store = new IncidentStore();
     const slack = new RecordingSlack();
     const boardConnector = {
@@ -187,9 +187,13 @@ describe('InvestigationEngine', () => {
     expect(lines[0]).toContain('AURA is working');
     expect(lines.filter((l) => l.startsWith('● '))).toHaveLength(3);
     expect(lines[1]).toContain('Coordinator');
-    // Done rows linger (within the 5s window here) and show Done.
+    // Done rows persist, and the task log survives the completion edit.
     const doneEdit = boardEdits.at(-1)!;
     expect(doneEdit.text).toContain('github_analyst — Done');
+    const finalEdit = slack.updates.at(-1)!;
+    expect(finalEdit.text).toContain('Response received');
+    expect(finalEdit.text).toContain('github_analyst — Done');
+    expect(finalEdit.text).toContain('Task 1');
   });
 
   it('reports unknown decisions as expired', async () => {
