@@ -8,6 +8,7 @@ import type { Pool } from 'pg';
 import type { Logger } from 'pino';
 import type { Cart, SavedCartSummary } from '@ruleprod/contracts';
 import { AppError } from './errors.js';
+import { BackPaddockBuzz, type BuzzSummary } from './hype.js';
 import { assembleCart } from './logic/assemble.js';
 import { mergeLineSets, planAdd, planToggle } from './logic/lines.js';
 import { priceLines, type QuoteFn } from './logic/pricing.js';
@@ -21,12 +22,16 @@ export class CartService {
     private readonly pool: Pool,
     private readonly quote: QuoteFn,
     private readonly log: Logger,
+    private readonly buzz: BackPaddockBuzz = new BackPaddockBuzz(),
   ) {}
 
   // ---------- pricing ----------
 
   /** Quote stored lines (active and saved separately), dropping unknown skus. */
-  private async price(key: string, lines: StoredLine[]): Promise<{ cart: Cart; dropped: string[] }> {
+  private async price(
+    key: string,
+    lines: StoredLine[],
+  ): Promise<{ cart: Cart; dropped: string[] }> {
     const active = lines.filter((l) => !l.savedForLater);
     const saved = lines.filter((l) => l.savedForLater);
     const activePriced = await priceLines(active, this.quote);
@@ -70,7 +75,13 @@ export class CartService {
     if (dropped.includes(sku)) {
       throw new AppError('invalid_request', `Unknown sku: ${sku}`);
     }
+    this.buzz.record(key, sku, cart);
     return cart;
+  }
+
+  /** Grab counts for the /rural-prod buzz strip. */
+  buzzSummary(): BuzzSummary {
+    return this.buzz.summary();
   }
 
   async setQty(key: string, lineId: string, qty: number): Promise<Cart> {
