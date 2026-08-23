@@ -54,6 +54,18 @@ export async function addToCart(sku: string, qty: number): Promise<Cart> {
   return res.json();
 }
 
+export interface BackPaddockBuzz {
+  grabs: number;
+  sessions: number;
+}
+
+/** Buzz counts for the unlisted /rural-prod drop; best-effort. */
+export async function getBackPaddockBuzz(): Promise<BackPaddockBuzz> {
+  const res = await fetch(`${CART_URL}/api/back-paddock/buzz`, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`Failed to fetch buzz: ${res.status}`);
+  return res.json();
+}
+
 export async function updateCartItem(lineId: string, qty: number): Promise<Cart> {
   const key = await getUserKey();
 

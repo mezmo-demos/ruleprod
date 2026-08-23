@@ -1,15 +1,16 @@
-import Link from "next/link";
-import Image from "next/image";
-import type { Metadata } from "next";
-import type { Product } from "@ruleprod/contracts";
-import styles from "./page.module.css";
-import { getProduct } from "@/lib/catalog";
-import { resolveImage, formatCents } from "@/lib/utils";
-import { notFound } from "next/navigation";
+import Link from 'next/link';
+import Image from 'next/image';
+import type { Metadata } from 'next';
+import type { Product } from '@ruleprod/contracts';
+import styles from './page.module.css';
+import { getProduct } from '@/lib/catalog';
+import { getBackPaddockBuzz } from '@/lib/cart';
+import { resolveImage, formatCents } from '@/lib/utils';
+import { notFound } from 'next/navigation';
 
 export const metadata: Metadata = {
-  title: "The back paddock — Rule Prod",
-  description: "An unlisted corner of the store. If you know, you know.",
+  title: 'The back paddock — Rule Prod',
+  description: 'An unlisted corner of the store. If you know, you know.',
   robots: { index: false, follow: false },
 };
 
@@ -18,12 +19,19 @@ export default async function RuralProdPage() {
   let prod: Product;
   try {
     [stickers, prod] = await Promise.all([
-      getProduct("rural-prod-sticker-pack"),
-      getProduct("cattle-prod-36"),
+      getProduct('rural-prod-sticker-pack'),
+      getProduct('cattle-prod-36'),
     ]);
   } catch (e) {
     console.error(e);
     notFound();
+  }
+
+  let buzz: { grabs: number; sessions: number } | null = null;
+  try {
+    buzz = await getBackPaddockBuzz();
+  } catch (e) {
+    console.error(e);
   }
 
   return (
@@ -32,11 +40,15 @@ export default async function RuralProdPage() {
         <span className={styles.eyebrow}>Unlisted · not on the shelves</span>
         <h1 className="hero-h1">Welcome to the back paddock</h1>
         <p className="body-large">
-          Two items we sell but never mention. No links, no category, no search
-          results — you either heard about this page from someone you trust, or
-          you are the kind of person who types hashtags into address bars.
-          Either way, you belong here.
+          Two items we sell but never mention. No links, no category, no search results — you either
+          heard about this page from someone you trust, or you are the kind of person who types
+          hashtags into address bars. Either way, you belong here.
         </p>
+        {buzz && buzz.grabs > 0 && (
+          <p className={styles.hashtags}>
+            {buzz.grabs} grabbed the drop · {buzz.sessions} in on the secret
+          </p>
+        )}
         <p className={styles.hashtags}>#rural-prod · #cattle-not-pets</p>
       </section>
 
@@ -48,7 +60,7 @@ export default async function RuralProdPage() {
                 src={resolveImage(stickers.images[0])}
                 alt="#rural-prod barn crest sticker"
                 fill
-                style={{ objectFit: "contain" }}
+                style={{ objectFit: 'contain' }}
               />
             </div>
             <div className={styles.mediaHalf}>
@@ -56,7 +68,7 @@ export default async function RuralProdPage() {
                 src={resolveImage(stickers.images[1])}
                 alt="#rural-prod Support Local badge sticker"
                 fill
-                style={{ objectFit: "contain" }}
+                style={{ objectFit: 'contain' }}
               />
             </div>
           </div>
@@ -82,7 +94,7 @@ export default async function RuralProdPage() {
               src={resolveImage(prod.images[0])}
               alt="Rule Prod cattle prod on a workbench"
               fill
-              style={{ objectFit: "cover" }}
+              style={{ objectFit: 'cover' }}
             />
           </div>
           <div className={styles.cardBody}>
@@ -102,9 +114,7 @@ export default async function RuralProdPage() {
         </Link>
       </section>
 
-      <p className={styles.footnote}>
-        Tell a friend. Quietly. Preferably one with a barn.
-      </p>
+      <p className={styles.footnote}>Tell a friend. Quietly. Preferably one with a barn.</p>
     </main>
   );
 }
