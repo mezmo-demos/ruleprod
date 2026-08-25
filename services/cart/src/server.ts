@@ -83,7 +83,9 @@ export function buildServer({ pool, quote, log }: ServerDeps): FastifyInstance {
 
   app.setErrorHandler((err, req, reply) => {
     if (err instanceof AppError) {
-      return reply.status(err.statusCode).send({ error: { code: err.code, message: err.message } });
+      return reply
+        .status(err.statusCode)
+        .send({ error: { code: err.code, message: err.message } });
     }
     const { statusCode, message } = err as { statusCode?: number; message?: string };
     if (statusCode !== undefined && statusCode >= 400 && statusCode < 500) {
@@ -115,10 +117,6 @@ export function buildServer({ pool, quote, log }: ServerDeps): FastifyInstance {
       return reply.status(503).send({ ok: false });
     }
   });
-
-  // ---------- back-paddock buzz ----------
-
-  app.get('/api/back-paddock/buzz', async () => carts.buzzSummary());
 
   // ---------- cart ----------
 
@@ -193,10 +191,7 @@ export function buildServer({ pool, quote, log }: ServerDeps): FastifyInstance {
   });
 
   app.delete<SavedParams>('/api/carts/:key/saved-carts/:id', async (req) => {
-    return carts.deleteSavedCart(
-      requireKey(req.params.key),
-      requireUuid(req.params.id, 'saved cart'),
-    );
+    return carts.deleteSavedCart(requireKey(req.params.key), requireUuid(req.params.id, 'saved cart'));
   });
 
   // ---------- rekey ----------
