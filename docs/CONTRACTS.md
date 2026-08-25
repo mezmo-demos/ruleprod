@@ -5,13 +5,13 @@ If this doc and the package disagree, fix whichever is wrong — they ship toget
 
 ## Topology
 
-| Service  | Port (in-container) | State                     | Cluster DNS                                |
-| -------- | ------------------- | ------------------------- | ------------------------------------------ |
-| frontend | 3000                | none (signed cookies)     | `frontend.ruleprod-apps.svc.cluster.local` |
-| catalog  | 3000                | Postgres schema `catalog` | `catalog.ruleprod-apps.svc.cluster.local`  |
-| cart     | 3000                | Postgres schema `cart`    | `cart.ruleprod-apps.svc.cluster.local`     |
-| checkout | 3000                | stateless                 | `checkout.ruleprod-apps.svc.cluster.local` |
-| orders   | 3000                | Postgres schema `orders`  | `orders.ruleprod-apps.svc.cluster.local`   |
+| Service | Port (in-container) | State | Cluster DNS |
+|---|---|---|---|
+| frontend | 3000 | none (signed cookies) | `frontend.ruleprod-apps.svc.cluster.local` |
+| catalog | 3000 | Postgres schema `catalog` | `catalog.ruleprod-apps.svc.cluster.local` |
+| cart | 3000 | Postgres schema `cart` | `cart.ruleprod-apps.svc.cluster.local` |
+| checkout | 3000 | stateless | `checkout.ruleprod-apps.svc.cluster.local` |
+| orders | 3000 | Postgres schema `orders` | `orders.ruleprod-apps.svc.cluster.local` |
 
 Local docker-compose host ports: frontend 3000, catalog 4101, cart 4102, checkout 4103, orders 4104.
 
@@ -49,7 +49,7 @@ checkout → {cart, catalog, orders}. Nothing else calls anything else.
 
 - **catalog** owns unit prices, sales, and bulk-tier arithmetic. Everyone who
   needs a price calls `POST /api/price-quote`. `cart` stores skus and
-  quantities and _joins_ quotes onto them; it never computes a price.
+  quantities and *joins* quotes onto them; it never computes a price.
 - **checkout** owns order-level promo, shipping, and tax. Nothing else touches them.
 
 ## catalog
@@ -68,7 +68,7 @@ graduations `Metric | Imperial | Dual | 4R | 8ths & 16ths | Engineer`.
   → `{ products: ProductCard[], total, page, perPage, facets }` where facets carry
   per-value counts for the current filter set and `price: { minCents, maxCents }`.
   `ProductCard`: `{ slug, title, specLine, image, priceCents, badge?: 'best_seller' | 'low_stock',
-stock, bulk: { minQty, unitPriceCents } | null }` (lowest tier teaser, null → "no bulk").
+  stock, bulk: { minQty, unitPriceCents } | null }` (lowest tier teaser, null → "no bulk").
 - `GET /api/products/:slug` → full `Product`: card fields plus `category`,
   `description`, `images: string[]` (image keys, ≥1; slot 0 is primary),
   `specs: { material, finish, thickness, graduation, tolerance, madeIn }`,
@@ -80,9 +80,9 @@ stock, bulk: { minQty, unitPriceCents } | null }` (lowest tier teaser, null → 
 - `POST /api/price-quote` body `{ lines: [{ sku, qty }] }` →
   `{ lines: QuotedLine[], subtotalCents, bulkSavingsCents, unitCount }`.
   `QuotedLine`: `{ sku, qty, stock, product: { slug, title, variantLabel, specLine, image },
-baseUnitPriceCents, unitPriceCents, lineTotalCents,
-appliedTier: { minQty, unitPriceCents } | null,
-nextTier: { minQty, unitPriceCents, unitsAway } | null }`.
+  baseUnitPriceCents, unitPriceCents, lineTotalCents,
+  appliedTier: { minQty, unitPriceCents } | null,
+  nextTier: { minQty, unitPriceCents, unitsAway } | null }`.
   Sale windows (percent off, start/end) apply to the base price before tiers.
   Unknown sku → 422 `invalid_request` naming the sku.
 
@@ -121,8 +121,6 @@ subtotalCents, bulkSavingsCents }` — `CartLine` = `QuotedLine` plus
 - `DELETE /api/carts/:key/saved-carts/:id`
 - `POST /api/carts/:key/rekey` `{ toKey }` — moves lines, saved-for-later and saved
   carts onto `toKey` (merging same-sku lines), deletes `:key`. Guest → persona.
-- `GET /api/back-paddock/buzz` → `{ grabs, sessions }` — in-process social-proof
-  counts for the unlisted /rural-prod drop; incremented when a drop sku is added.
 
 ## checkout (stateless)
 
@@ -137,13 +135,13 @@ Tax: 8.875% of (subtotal − promo discount), rounded half-up.
   `promo_invalid | promo_expired | promo_minimum_not_met` (message is user-facing).
 - `POST /api/checkout/quote` `{ cartKey, delivery: 'standard' | 'expedited', promoCode? }` →
   `{ lines, unitCount, subtotalCents, bulkSavingsCents, promo: { code, discountCents } | null,
-shippingCents, taxCents, totalCents }` — re-priced via cart → catalog, never trusted
+  shippingCents, taxCents, totalCents }` — re-priced via cart → catalog, never trusted
   from the client. Invalid promo → still 200, with `promo: null` and
   `promoError: { code, message }`.
 - `POST /api/checkout/place-order` body:
   `{ idempotencyKey, cartKey, userKey?, contact: { email, name? },
-shippingAddress: { name, street1, street2?, city, state, zip, country: 'US' },
-delivery, payment: { method: 'invoice_net30' | 'purchase_order' }, promoCode? }`
+  shippingAddress: { name, street1, street2?, city, state, zip, country: 'US' },
+  delivery, payment: { method: 'invoice_net30' | 'purchase_order' }, promoCode? }`
   → 201 `{ orderId, orderNumber, placedAt, arrivesEstimate, totals }`.
   Flow: quote → verify qty ≤ stock per line (else 409 `inventory_drift` naming the
   sku) → `POST orders /api/orders` (5s timeout → 504 `upstream_timeout`) →
@@ -155,14 +153,14 @@ delivery, payment: { method: 'invoice_net30' | 'purchase_order' }, promoCode? }`
 
 - `POST /api/orders` — from checkout:
   `{ idempotencyKey, userKey, contact, shippingAddress, delivery: { method, priceCents },
-payment: { method }, promo: { code, discountCents } | null,
-lines: [{ sku, slug, title, variantLabel, image, qty, unitPriceCents, lineTotalCents }],
-totals: { subtotalCents, bulkSavingsCents, promoDiscountCents, shippingCents, taxCents, totalCents } }`
+  payment: { method }, promo: { code, discountCents } | null,
+  lines: [{ sku, slug, title, variantLabel, image, qty, unitPriceCents, lineTotalCents }],
+  totals: { subtotalCents, bulkSavingsCents, promoDiscountCents, shippingCents, taxCents, totalCents } }`
   → 201 `Order`. Same `idempotencyKey` again → 200 with the existing order.
 - `GET /api/orders?userKey=` →
   `{ orders: OrderSummary[], stats: { orderCount, lifetimeCents } }`, newest first.
   `OrderSummary`: `{ id, orderNumber, status, placedAt, arrivesEstimate, totalCents,
-unitCount, summaryLine, thumbs: string[] }` (≤3 image keys;
+  unitCount, summaryLine, thumbs: string[] }` (≤3 image keys;
   `summaryLine` e.g. "15 units · placed 12 Jul").
 - `GET /api/orders/:idOrNumber` → full `Order` (summary + lines, contact, address,
   delivery, payment, promo, totals). Accepts uuid or `RP-#####`.
