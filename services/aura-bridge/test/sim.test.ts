@@ -9,11 +9,11 @@ async function collect(gen: AsyncGenerator<AuraEvent>): Promise<AuraEvent[]> {
 }
 
 describe('SimAuraConnector', () => {
-  it('emits statuses then a final response', async () => {
+  it('emits progress then a final response', async () => {
     const sim = new SimAuraConnector(1);
     const events = await collect(sim.run({ sessionId: 's1', messages: [{ role: 'user', content: 'investigate' }] }));
     const kinds = events.map((e) => e.kind);
-    expect(kinds.filter((k) => k === 'status').length).toBeGreaterThanOrEqual(3);
+    expect(kinds.filter((k) => k === 'progress').length).toBeGreaterThanOrEqual(3);
     expect(kinds.at(-1)).toBe('final');
   });
 
@@ -30,10 +30,10 @@ describe('SimAuraConnector', () => {
         ],
       }),
     );
-    const resume = events.find((e) => e.kind === 'status' && e.text.startsWith('Resuming'));
+    const resume = events.find((e) => e.kind === 'progress' && e.message.startsWith('Resuming'));
     expect(resume).toBeDefined();
-    expect((resume as { text: string }).text).toContain('run 2');
-    expect((resume as { text: string }).text).toContain('3 messages');
+    expect((resume as { message: string }).message).toContain('run 2');
+    expect((resume as { message: string }).message).toContain('3 messages');
   });
 
   it('parks an approval on the trigger phrase and resumes on approve', async () => {

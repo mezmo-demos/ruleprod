@@ -1,11 +1,12 @@
 // Investigation engine: the routing/control layer between triggers, aura, and
-// Slack. Owns the conversation tree, per-incident FIFO, live status edits, and
-// the approval registry. Triggers stay thin; this is the only place that knows
-// the demo's message choreography.
+// Slack. Owns the conversation tree, per-incident FIFO, the approval registry,
+// and which messages exist; how the live status message reads is
+// outbound/status.ts's job. Triggers stay thin.
 import type { FastifyBaseLogger } from 'fastify';
-import type { AuraConnector, BoardLine, ChatMessage } from '../aura/connector.js';
+import type { AuraConnector, ChatMessage } from '../aura/connector.js';
 import { markdownToMrkdwn } from '../outbound/mrkdwn.js';
-import { approvalBlocks, approvalResolvedBlocks, runStatusBlocks, type SlackPort } from '../outbound/slack.js';
+import { approvalBlocks, approvalResolvedBlocks, type SlackPort } from '../outbound/slack.js';
+import { RunStatusMessage } from '../outbound/status.js';
 import { authorizeButton } from './approver.js';
 import { KeyedQueue } from './queue.js';
 import type { Incident, IncidentStore } from './store.js';
@@ -200,63 +201,19 @@ export class InvestigationEngine {
     const { slack, store, logger } = this.deps;
     const messages = this.buildMessages(req);
     const run: ActiveRun = { controller: new AbortController() };
-    const stop = { incidentId: req.incident.id };
-    const statusMsg = await slack.postMessage({
+    const status = new RunStatusMessage({
+      slack,
       channel: req.incident.channelId,
       threadTs: req.threadTs,
-      text: investigatingText(),
-      blocks: runStatusBlocks({ text: investigatingText(), stop }),
+      incidentId: req.incident.id,
+      updateIntervalMs: this.deps.statusUpdateIntervalMs,
     });
+    await status.post();
     // Registered only once the status message (and its Stop button) exists.
     this.activeRuns.set(req.incident.id, run);
 
-    const startedAt = Date.now();
-    let lastEdit = 0;
-    let latestStatus: string | undefined;
-    let tokensUsed = 0;
     let finalText: string | undefined;
     const connector = this.deps.connector();
-
-    // Orchestration task board: a chronological log, not one-row-per-actor.
-    // Live rows update in place; done rows freeze. A returning actor gets a
-    // fresh row below — task ids restart at 0 on every replan wave, so a done
-    // `task-0` row is a prior wave's record, and each coordinator reappearance
-    // (replan, extra dispatch, synthesis) opens a new segment of the log.
-    const board: Array<{ key: string; text: string; done: boolean }> = [];
-    const applyBoard = (line: BoardLine) => {
-      if (line.key === 'coordinator') {
-        // Coordinator events arrive in bursts (plan_created → replan_started
-        // back-to-back): consecutive ones share a row, keeping the latest text.
-        const last = board.at(-1);
-        if (last?.key === 'coordinator') last.text = line.text;
-        else board.push({ key: line.key, text: line.text, done: false });
-        return;
-      }
-      const live = board.findLast((r) => r.key === line.key);
-      if (live && !live.done) {
-        live.text = line.text;
-        live.done = Boolean(line.done);
-      } else {
-        board.push({ key: line.key, text: line.text, done: Boolean(line.done) });
-      }
-    };
-    const boardRows = () => board.map((r) => `● ${r.text}`);
-    const renderStatus = () => {
-      if (board.length === 0) return investigatingText(latestStatus, tokensUsed);
-      return [':mag: *AURA is working…*', ...boardRows()].join('\n');
-    };
-    const editStatus = async (force = false) => {
-      const now = Date.now();
-      if (!force && now - lastEdit < this.deps.statusUpdateIntervalMs) return;
-      lastEdit = now;
-      const text = renderStatus();
-      await slack.updateMessage({
-        channel: statusMsg.channel,
-        ts: statusMsg.ts,
-        text,
-        blocks: runStatusBlocks({ text, stop }),
-      });
-    };
 
     try {
       for await (const ev of connector.run({
@@ -265,17 +222,11 @@ export class InvestigationEngine {
         signal: run.controller.signal,
       })) {
         switch (ev.kind) {
-          case 'status':
-            latestStatus = ev.text;
-            await editStatus();
-            break;
-          case 'board':
-            applyBoard(ev.line);
-            await editStatus();
-            break;
+          case 'progress':
+          case 'tool_activity':
+          case 'orchestration':
           case 'usage':
-            tokensUsed += ev.totalTokens;
-            await editStatus();
+            await status.apply(ev);
             break;
           case 'approval_pending': {
             const posted = await slack.postMessage({
@@ -325,14 +276,7 @@ export class InvestigationEngine {
         threadTs: req.threadTs,
         text: markdownToMrkdwn(finalText),
       });
-      const summary = [doneText(startedAt, tokensUsed), ...boardRows()].join('\n');
-      await slack.updateMessage({
-        channel: statusMsg.channel,
-        ts: statusMsg.ts,
-        text: summary,
-        // blocks without `stop` — this edit is what removes the Stop button.
-        blocks: runStatusBlocks({ text: summary }),
-      });
+      await status.complete();
       store.addNode(req.incident, {
         parentId: req.parentNodeId,
         messages: [...messages, { role: 'assistant', content: finalText }],
@@ -341,20 +285,13 @@ export class InvestigationEngine {
         mainLine: !req.threadTs,
       });
     } catch (err) {
-      const text = run.stoppedBy
-        ? [stoppedText(run.stoppedBy, startedAt, tokensUsed), ...boardRows()].join('\n')
-        : `:x: AURA investigation failed: ${(err as Error).message}`;
       if (run.stoppedBy) {
         logger.info({ incident: req.incident.id, stoppedBy: run.stoppedBy }, 'investigation stopped');
+        await status.stopped(run.stoppedBy);
       } else {
         logger.error({ err, incident: req.incident.id }, 'investigation failed');
+        await status.failed((err as Error).message);
       }
-      await slack.updateMessage({
-        channel: statusMsg.channel,
-        ts: statusMsg.ts,
-        text,
-        blocks: runStatusBlocks({ text }),
-      });
       // Aura denies parked approvals on disconnect, but the stream is gone —
       // no approval_completed will arrive, so resolve their messages here.
       await this.cancelPendingApprovals(req.incident.id);
@@ -384,41 +321,3 @@ export class InvestigationEngine {
     return [...history, { role: 'user', content: req.prompt }];
   }
 }
-
-// Plain status (no board): single line, rewritten in place. Elapsed time and
-// token spend keep it visibly alive between sparse events.
-// No clock here by design; totals land on the completion line. Token counts
-// appear mid-run only when aura reports them (today its orchestration mode
-// reports usage once, at stream end — so real runs usually show them only on
-// completion; the sim reports per-step).
-function investigatingText(latest?: string, tokensUsed = 0): string {
-  const parts = [`:mag: *AURA is working…*`];
-  if (latest) parts.push(`_${truncate(latest, 120)}_`);
-  if (tokensUsed > 0) parts.push(`~${formatTokens(tokensUsed)} tokens`);
-  return parts.join(' — ');
-}
-
-function elapsedText(startedAt: number): string {
-  const secs = Math.round((Date.now() - startedAt) / 1000);
-  return secs >= 60 ? `${Math.floor(secs / 60)}m ${secs % 60}s` : `${secs}s`;
-}
-
-function formatTokens(n: number): string {
-  return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
-}
-
-// No :white_check_mark: — it sits right next to the approval-resolved message,
-// which owns that emoji.
-function doneText(startedAt: number, tokensUsed = 0): string {
-  const totals = [elapsedText(startedAt)];
-  if (tokensUsed > 0) totals.push(`~${formatTokens(tokensUsed)} tokens`);
-  return `:mag: *Done* (${totals.join(' · ')})`;
-}
-
-function stoppedText(userId: string, startedAt: number, tokensUsed = 0): string {
-  const totals = [elapsedText(startedAt)];
-  if (tokensUsed > 0) totals.push(`~${formatTokens(tokensUsed)} tokens`);
-  return `:octagonal_sign: *Stopped* by <@${userId}> (${totals.join(' · ')})`;
-}
-
-const truncate = (s: string, n: number) => (s.length > n ? `${s.slice(0, n)}…` : s);

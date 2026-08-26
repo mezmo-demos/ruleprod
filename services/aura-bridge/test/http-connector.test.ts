@@ -3,7 +3,7 @@
 import Fastify from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { AuraEvent } from '../src/aura/connector.js';
-import { formatArgs, HttpAuraConnector, sseFrames } from '../src/aura/http.js';
+import { HttpAuraConnector, sseFrames } from '../src/aura/http.js';
 
 const SSE_BODY = [
   ': heartbeat',
@@ -96,22 +96,27 @@ describe('HttpAuraConnector', () => {
       events.push(ev);
     }
     expect(events).toEqual([
-      { kind: 'status', text: 'dispatching cluster_inspector' },
-      { kind: 'board', line: { key: 'coordinator', text: 'Coordinator — Plan — Find the leak', done: false } },
-      { kind: 'board', line: { key: 'task-0', text: 'Task 0 — github_analyst — Diff recent commits', done: false } },
-      // Reasoning marker only — never the reasoning words.
-      { kind: 'board', line: { key: 'task-0', text: 'Task 0 — github_analyst — Reasoning', done: false } },
+      { kind: 'progress', message: 'dispatching cluster_inspector' },
+      { kind: 'orchestration', update: { type: 'plan_created', goal: 'Find the leak' } },
       {
-        kind: 'board',
-        line: {
-          key: 'task-0',
-          text: 'Task 0 — github_analyst — SearchCode(order: "desc", page: 1, query: "a very long searc…")',
-          done: false,
+        kind: 'orchestration',
+        update: { type: 'task_started', taskId: 0, workerId: 'github_analyst', description: 'Diff recent commits' },
+      },
+      // The reasoning fact only — payload content (the reasoning words) is dropped.
+      { kind: 'orchestration', update: { type: 'worker_reasoning', taskId: 0, workerId: 'github_analyst' } },
+      {
+        kind: 'orchestration',
+        update: {
+          type: 'tool_call_started',
+          taskId: 0,
+          workerId: 'github_analyst',
+          toolName: 'SearchCode',
+          args: { order: 'desc', page: 1, query: 'a very long search query string' },
         },
       },
       // tool_call_completed intentionally dropped (no completion timings).
-      { kind: 'board', line: { key: 'task-0', text: 'Task 0 — github_analyst — Done', done: true } },
-      { kind: 'board', line: { key: 'coordinator', text: 'Coordinator — Synthesizing', done: false } },
+      { kind: 'orchestration', update: { type: 'task_completed', taskId: 0, workerId: 'github_analyst', success: true } },
+      { kind: 'orchestration', update: { type: 'synthesizing' } },
       { kind: 'approval_pending', decisionId: 'dec_1', toolName: 'nodes_log', args: { name: 'node-a' } },
       { kind: 'approval_completed', decisionId: 'dec_1', outcome: 'approved' },
       { kind: 'final', text: 'Root cause: OOM in cart.' },
@@ -123,13 +128,6 @@ describe('HttpAuraConnector', () => {
     expect(await connector.resolveApproval('dec_1', false, 'nope')).toBe(true);
     expect(approvalBody).toEqual({ approved: false, reason: 'nope' });
     expect(await connector.resolveApproval('unknown', true)).toBe(false);
-  });
-
-  it('formats tool args compactly', () => {
-    expect(formatArgs({ order: 'desc', page: 1, deep: { a: 1 } })).toBe('order: "desc", page: 1, deep: {"a":1}');
-    expect(formatArgs({ q: 'this string is much longer than seventeen chars' })).toBe('q: "this string is mu…"');
-    expect(formatArgs({ a: 1, b: 2, c: 3, d: 4, e: 5 })).toBe('a: 1, b: 2, c: 3, d: 4, …');
-    expect(formatArgs(undefined)).toBe('');
   });
 
   it('yields an error event on non-2xx', async () => {

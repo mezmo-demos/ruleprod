@@ -152,16 +152,16 @@ describe('InvestigationEngine', () => {
     expect(slack.posts).toHaveLength(0);
   });
 
-  it('renders the task board from board events, keeping done rows as a log', async () => {
+  it('renders the task board from orchestration events, keeping done rows as a log', async () => {
     const store = new IncidentStore();
     const slack = new RecordingSlack();
     const boardConnector = {
       name: 'stub',
       async *run() {
-        yield { kind: 'board', line: { key: 'coordinator', text: 'Coordinator — Plan — find leak' } } as const;
-        yield { kind: 'board', line: { key: 'task-0', text: 'Task 0 — github_analyst — Reasoning' } } as const;
-        yield { kind: 'board', line: { key: 'task-1', text: 'Task 1 — metrics_analyst — QueryPrometheus(expr: "up")' } } as const;
-        yield { kind: 'board', line: { key: 'task-0', text: 'Task 0 — github_analyst — Done', done: true } } as const;
+        yield { kind: 'orchestration', update: { type: 'plan_created', goal: 'find leak' } } as const;
+        yield { kind: 'orchestration', update: { type: 'worker_reasoning', taskId: 0, workerId: 'github_analyst' } } as const;
+        yield { kind: 'orchestration', update: { type: 'tool_call_started', taskId: 1, workerId: 'metrics_analyst', toolName: 'QueryPrometheus', args: { expr: 'up' } } } as const;
+        yield { kind: 'orchestration', update: { type: 'task_completed', taskId: 0, workerId: 'github_analyst', success: true } } as const;
         yield { kind: 'final', text: 'answer' } as const;
       },
       async resolveApproval() {
@@ -202,21 +202,21 @@ describe('InvestigationEngine', () => {
     const replanConnector = {
       name: 'stub',
       async *run() {
-        yield { kind: 'board', line: { key: 'coordinator', text: 'Coordinator — Plan — find leak' } } as const;
-        yield { kind: 'board', line: { key: 'task-0', text: 'Task 0 — incident_responder — Reasoning' } } as const;
-        yield { kind: 'board', line: { key: 'task-1', text: 'Task 1 — metrics_analyst — Reasoning' } } as const;
-        yield { kind: 'board', line: { key: 'task-0', text: 'Task 0 — incident_responder — Done', done: true } } as const;
+        yield { kind: 'orchestration', update: { type: 'plan_created', goal: 'find leak' } } as const;
+        yield { kind: 'orchestration', update: { type: 'worker_reasoning', taskId: 0, workerId: 'incident_responder' } } as const;
+        yield { kind: 'orchestration', update: { type: 'worker_reasoning', taskId: 1, workerId: 'metrics_analyst' } } as const;
+        yield { kind: 'orchestration', update: { type: 'task_completed', taskId: 0, workerId: 'incident_responder', success: true } } as const;
         // Replan: aura emits plan_created for the new plan, then replan_started —
         // consecutive coordinator events share one row (latest text wins).
-        yield { kind: 'board', line: { key: 'coordinator', text: 'Coordinator — Plan — narrower goal' } } as const;
-        yield { kind: 'board', line: { key: 'coordinator', text: 'Coordinator — Replanning — gaps found' } } as const;
+        yield { kind: 'orchestration', update: { type: 'plan_created', goal: 'narrower goal' } } as const;
+        yield { kind: 'orchestration', update: { type: 'replan_started', trigger: 'gaps found' } } as const;
         // Straggler from wave 1 finishes after the replan row appeared: its live
         // row (above the replan) updates in place.
-        yield { kind: 'board', line: { key: 'task-1', text: 'Task 1 — metrics_analyst — Done', done: true } } as const;
+        yield { kind: 'orchestration', update: { type: 'task_completed', taskId: 1, workerId: 'metrics_analyst', success: true } } as const;
         // New wave reuses task id 0 — must get a fresh row, not revive wave 1's.
-        yield { kind: 'board', line: { key: 'task-0', text: 'Task 0 — cluster_inspector — Reasoning' } } as const;
-        yield { kind: 'board', line: { key: 'task-0', text: 'Task 0 — cluster_inspector — Done', done: true } } as const;
-        yield { kind: 'board', line: { key: 'coordinator', text: 'Coordinator — Answering directly' } } as const;
+        yield { kind: 'orchestration', update: { type: 'worker_reasoning', taskId: 0, workerId: 'cluster_inspector' } } as const;
+        yield { kind: 'orchestration', update: { type: 'task_completed', taskId: 0, workerId: 'cluster_inspector', success: true } } as const;
+        yield { kind: 'orchestration', update: { type: 'direct_answer' } } as const;
         yield { kind: 'final', text: 'answer' } as const;
       },
       async resolveApproval() {
