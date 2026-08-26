@@ -41,12 +41,12 @@ export class SimAuraConnector implements AuraConnector {
     const prompt = typeof lastUser?.content === 'string' ? lastUser.content : '';
 
     if (runNumber > 1) {
-      yield { kind: 'status', text: `Resuming session ${input.sessionId} (run ${runNumber}, ${input.messages.length} messages of history)` };
+      yield { kind: 'progress', message: `Resuming session ${input.sessionId} (run ${runNumber}, ${input.messages.length} messages of history)` };
     }
     let tokens = 0;
     for (const step of THINKING_STEPS) {
       await sleep(this.stepMs, input.signal);
-      yield { kind: 'status', text: step };
+      yield { kind: 'progress', message: step };
       tokens += 4200;
       yield { kind: 'usage', totalTokens: tokens };
     }
@@ -62,7 +62,7 @@ export class SimAuraConnector implements AuraConnector {
         return;
       }
       await sleep(this.stepMs, input.signal);
-      yield { kind: 'status', text: 'cluster_inspector: reading kubelet logs from approved node' };
+      yield { kind: 'progress', message: 'cluster_inspector: reading kubelet logs from approved node' };
       approvalNote = 'Node kubelet logs confirm the container restarts line up with memory-cgroup OOM events.\n\n';
     }
 

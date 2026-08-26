@@ -6,6 +6,10 @@
 // stateless per request (full messages[] resent each run), and the session id
 // keys aura's orchestration run store — reuse it across runs of one incident,
 // never across two concurrent runs.
+//
+// Events carry facts (what aura did), not rendered text: connectors decode the
+// wire format, outbound/status.ts turns events into the Slack status message.
+// Neither side knows the other's format.
 
 /** OpenAI-shaped chat message. Extra fields (tool_calls, tool_call_id, ...)
  * must survive round-trips untouched — aura's scratchpad file pointers live in
@@ -16,22 +20,26 @@ export interface ChatMessage {
   [key: string]: unknown;
 }
 
-/** One row of the live task board: keyed so later events update the actor's
- * live row. Done rows freeze — a later event with the same key (replan waves
- * reuse task ids from 0) starts a new row, so the board reads chronologically. */
-export interface BoardLine {
-  /** 'coordinator' or 'task-<n>' — the actor this event belongs to. */
-  key: string;
-  /** Rendered row body, e.g. `Task 0 — github_analyst — SearchCode(page: 1)`. */
-  text: string;
-  /** Row is final; it stays on the board as the persistent task log. */
-  done?: boolean;
-}
+/** One orchestration actor's move. taskId absent = the coordinator (also the
+ * defensive fallback when a payload omits task_id). Task ids restart at 0 on
+ * every replan wave, so taskId alone never identifies a task across a run. */
+export type OrchestrationUpdate =
+  | { type: 'plan_created'; goal: string }
+  | { type: 'direct_answer' }
+  | { type: 'replan_started'; trigger: string }
+  | { type: 'synthesizing' }
+  | { type: 'task_started'; taskId?: number | string; workerId?: string; description: string }
+  /** The fact that a worker is reasoning — deliberately never the words. */
+  | { type: 'worker_reasoning'; taskId?: number | string; workerId?: string }
+  | { type: 'tool_call_started'; taskId?: number | string; workerId?: string; toolName: string; args: unknown }
+  | { type: 'task_completed'; taskId?: number | string; workerId?: string; success: boolean };
 
 export type AuraEvent =
-  | { kind: 'status'; text: string }
-  /** Orchestration task-board row. When present, boards replace plain statuses. */
-  | { kind: 'board'; line: BoardLine }
+  /** Free-text progress from aura (aura.progress, worker phases). */
+  | { kind: 'progress'; message: string }
+  /** Top-level (non-orchestrated) tool activity. */
+  | { kind: 'tool_activity'; phase: 'started' | 'finished'; toolName: string }
+  | { kind: 'orchestration'; update: OrchestrationUpdate }
   /** Per-LLM-call token snapshot — a liveness signal during quiet stretches. */
   | { kind: 'usage'; totalTokens: number }
   | { kind: 'approval_pending'; decisionId: string; toolName: string; args: unknown }

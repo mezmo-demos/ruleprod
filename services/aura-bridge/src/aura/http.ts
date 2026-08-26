@@ -3,9 +3,9 @@
 // denies parked approvals), so never abort early except on caller error or a
 // deliberate stop: input.signal leans on exactly that fail-close as the cancel
 // mechanism (aura has no cancel endpoint).
-// Event mapping is defensive: aura.* payload shapes vary by event; unknown
-// events degrade to status lines rather than failing the run.
-import type { AuraConnector, AuraEvent, AuraRunInput } from './connector.js';
+// Event mapping is defensive: aura.* payload shapes vary by event; missing
+// fields decode to empty/undefined rather than failing the run.
+import type { AuraConnector, AuraEvent, AuraRunInput, OrchestrationUpdate } from './connector.js';
 
 export class HttpAuraConnector implements AuraConnector {
   readonly name = 'real';
@@ -85,16 +85,16 @@ function mapAuraEvent(event: string, p: Record<string, unknown>): AuraEvent | un
     case 'aura.approval_completed':
       return { kind: 'approval_completed', decisionId: str(p.decision_id), outcome: outcomeText(p.outcome) };
     case 'aura.progress':
-      return { kind: 'status', text: str(p.message ?? p.status ?? p.detail, 'working…') };
+      return { kind: 'progress', message: str(p.message ?? p.status ?? p.detail, 'working…') };
     case 'aura.reasoning':
       // Streamed as tiny deltas — thousands per run, each meaningless alone.
       return undefined;
     case 'aura.tool_start':
-      return { kind: 'status', text: `running \`${str(p.tool_name ?? p.name, '?')}\`` };
+      return { kind: 'tool_activity', phase: 'started', toolName: str(p.tool_name ?? p.name, '?') };
     case 'aura.tool_complete':
-      return { kind: 'status', text: `\`${str(p.tool_name ?? p.name, '?')}\` finished` };
+      return { kind: 'tool_activity', phase: 'finished', toolName: str(p.tool_name ?? p.name, '?') };
     case 'aura.worker_phase':
-      return { kind: 'status', text: str(p.phase ?? p.message, 'worker phase') };
+      return { kind: 'progress', message: str(p.phase ?? p.message, 'worker phase') };
     case 'aura.tool_usage':
     case 'aura.usage': {
       const total = typeof p.total_tokens === 'number' ? p.total_tokens : Number(p.total_tokens);
@@ -106,51 +106,35 @@ function mapAuraEvent(event: string, p: Record<string, unknown>): AuraEvent | un
   }
 }
 
-// Task-board rows: one per active actor, later events replace earlier rows.
-// One generic formatter over the payload shapes in aura-events orchestration.rs
-// — no per-event-type prose.
+// Payload shapes per aura-events orchestration.rs. Decode only — no prose.
 function mapOrchestratorEvent(event: string, p: Record<string, unknown>): AuraEvent | undefined {
-  const taskKey = () => (p.task_id === undefined || p.task_id === null ? 'coordinator' : `task-${p.task_id}`);
-  const taskLabel = () =>
-    p.task_id === undefined || p.task_id === null
-      ? 'Coordinator'
-      : `Task ${p.task_id} — ${str(p.worker_id, 'worker')}`;
-  const row = (text: string, done = false): AuraEvent => ({ kind: 'board', line: { key: taskKey(), text, done } });
+  const orch = (update: OrchestrationUpdate): AuraEvent => ({ kind: 'orchestration', update });
+  const task = (): { taskId?: number | string; workerId?: string } => ({
+    ...(typeof p.task_id === 'number' || typeof p.task_id === 'string' ? { taskId: p.task_id } : {}),
+    ...(typeof p.worker_id === 'string' ? { workerId: p.worker_id } : {}),
+  });
 
   switch (event.slice('aura.orchestrator.'.length)) {
     case 'plan_created':
-      return row(`Coordinator — Plan — ${truncate(str(p.goal, ''), 160)}`);
+      return orch({ type: 'plan_created', goal: str(p.goal) });
     case 'direct_answer':
-      return row('Coordinator — Answering directly');
+      return orch({ type: 'direct_answer' });
     case 'replan_started':
-      return row(`Coordinator — Replanning — ${truncate(str(p.trigger, ''), 120)}`);
+      return orch({ type: 'replan_started', trigger: str(p.trigger) });
     case 'synthesizing':
-      return row('Coordinator — Synthesizing');
+      return orch({ type: 'synthesizing' });
     case 'task_started':
-      return row(`${taskLabel()} — ${truncate(str(p.description, 'starting'), 120)}`);
+      return orch({ type: 'task_started', ...task(), description: str(p.description) });
     case 'worker_reasoning':
-      // Just the marker — never the reasoning words.
-      return row(`${taskLabel()} — Reasoning`);
+      // Just the fact — p.content (the reasoning words) is dropped here.
+      return orch({ type: 'worker_reasoning', ...task() });
     case 'tool_call_started':
-      return row(`${taskLabel()} — ${str(p.tool_name, '?')}(${formatArgs(p.arguments)})`);
+      return orch({ type: 'tool_call_started', ...task(), toolName: str(p.tool_name), args: p.arguments });
     case 'task_completed':
-      return row(`${taskLabel()} — ${p.success === false ? 'Failed' : 'Done'}`, true);
+      return orch({ type: 'task_completed', ...task(), success: p.success !== false });
     default:
       return undefined; // tool_call_completed (no timings), iteration/phase bookkeeping
   }
-}
-
-/** `{a: "long value", b: 2}` → `a: "long val…", b: 2` — capped per value and overall. */
-export function formatArgs(args: unknown): string {
-  if (args === null || args === undefined || typeof args !== 'object' || Array.isArray(args)) return '';
-  const entries = Object.entries(args as Record<string, unknown>);
-  const parts = entries.slice(0, 4).map(([k, v]) => {
-    if (typeof v === 'string') return `${k}: "${truncate(v, 17)}"`;
-    if (typeof v === 'number' || typeof v === 'boolean') return `${k}: ${v}`;
-    return `${k}: ${truncate(JSON.stringify(v) ?? '?', 17)}`;
-  });
-  if (entries.length > 4) parts.push('…');
-  return truncate(parts.join(', '), 110);
 }
 
 function outcomeText(outcome: unknown): string {
