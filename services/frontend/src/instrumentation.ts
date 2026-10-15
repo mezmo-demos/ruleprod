@@ -47,7 +47,14 @@ export async function register() {
     spanProcessors: spanProcessorsFromEnv(),
     // Endpoint and protocol come from OTEL_EXPORTER_OTLP_*, set on the
     // Deployment; the exporter appends /v1/metrics itself. Temporality is left
-    // at the default cumulative — Prometheus cannot ingest delta.
-    metricReaders: [new PeriodicExportingMetricReader({ exporter: new OTLPMetricExporter() })],
+    // at the default cumulative — Prometheus cannot ingest delta. The reader
+    // ignores OTEL_METRIC_EXPORT_INTERVAL, so the interval is set here; keep it
+    // in step with packages/telemetry/src/register.ts.
+    metricReaders: [
+      new PeriodicExportingMetricReader({
+        exporter: new OTLPMetricExporter(),
+        exportIntervalMillis: 5000,
+      }),
+    ],
   });
 }
